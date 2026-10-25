@@ -29,6 +29,7 @@ export interface ImportSummary {
   lessons: number;
   attempts: number;
   practiceMinutes: number;
+  songs: number;
 }
 
 /**
@@ -39,7 +40,15 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> | string
   const v = raw.schemaVersion;
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) return 'Versão do ficheiro em falta ou inválida.';
   if (v > SCHEMA_VERSION) return 'Este ficheiro foi criado por uma versão mais recente da aplicação. Atualiza a aplicação e tenta de novo.';
-  return raw;
+  let out = raw;
+  if (v < 2) {
+    // v2 added imported songs.
+    const data = out.data;
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      out = { ...out, schemaVersion: 2, data: { ...(data as Record<string, unknown>), songs: [] } };
+    }
+  }
+  return out;
 }
 
 function formatIssue(issue: { path: PropertyKey[]; message: string }): string {
@@ -78,6 +87,11 @@ export function parseImport(text: string): ImportResult {
     if (ids.has(a.id)) return { ok: false, error: 'O ficheiro contém registos duplicados.' };
     ids.add(a.id);
   }
+  const songIds = new Set<string>();
+  for (const song of file.data.songs) {
+    if (songIds.has(song.id)) return { ok: false, error: 'O ficheiro contém músicas duplicadas.' };
+    songIds.add(song.id);
+  }
   return {
     ok: true,
     file,
@@ -87,6 +101,7 @@ export function parseImport(text: string): ImportResult {
       lessons: file.data.lessons.length,
       attempts: file.data.attempts.length,
       practiceMinutes: Math.round(file.data.practice.reduce((s, p) => s + p.seconds, 0) / 60),
+      songs: file.data.songs.length,
     },
   };
 }

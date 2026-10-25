@@ -10,18 +10,37 @@ import { practiceStats } from '../../domain/stats';
 import { LESSONS, MODULES } from '../../content/curriculum';
 import { INSTRUMENT_LABEL } from '../../content/labels';
 import { href } from '../../app/router';
+import { findSong } from '../../domain/songLibrary';
+import { buildSongPlan, knownChordIds, songFocus } from '../../domain/songPlan';
 
 /** Blocks whose time isn't logged automatically by another activity. */
 const LOG_ON_CHECK = new Set<BlockKind>(['aquecimento', 'aplicacao']);
 
 export function DashboardPage() {
-  const { data, completedLessons, togglePlanBlock } = useStore();
+  const { data, completedLessons, togglePlanBlock, settings } = useStore();
   const profile = data.profile;
   const today = localDay();
   const recommended = profile ? recommendedLesson(completedLessons, profile.experience) : null;
+  const target = useMemo(() => {
+    const song = settings.targetSongId ? findSong(settings.targetSongId, data.songs) : undefined;
+    if (!song) return null;
+    const known = knownChordIds(completedLessons, settings.knownChords);
+    const songPlan = buildSongPlan({ sequence: song.sequence, known, tempo: song.sheet.meta.tempo });
+    return { song, songPlan, focus: songFocus(songPlan), route: href('musicas', song.id) };
+  }, [settings.targetSongId, settings.knownChords, data.songs, completedLessons]);
   const plan = useMemo(
-    () => (profile ? buildDailyPlan({ profile, today, completedLessons, recommended, skills: data.skills }) : []),
-    [profile, today, completedLessons, recommended, data.skills],
+    () =>
+      profile
+        ? buildDailyPlan({
+            profile,
+            today,
+            completedLessons,
+            recommended,
+            skills: data.skills,
+            targetSong: target ? { title: target.song.title, route: target.route, focus: target.focus } : undefined,
+          })
+        : [],
+    [profile, today, completedLessons, recommended, data.skills, target],
   );
   if (!profile) return null;
   const planDay = data.planDays.find((p) => p.day === today);
@@ -76,6 +95,28 @@ export function DashboardPage() {
           })}
         </ol>
         <p className="hint">O plano é refeito todos os dias. Se faltares, não acumulas trabalho em atraso.</p>
+      </section>
+
+      <section className="card" aria-labelledby="song-title">
+        <div className="card__head">
+          <h2 id="song-title">Música objetivo</h2>
+          <a href="#/musicas">Ver músicas</a>
+        </div>
+        {target ? (
+          <>
+            <h3>{target.song.title}</h3>
+            <p className="muted">{target.song.artist}</p>
+            <ProgressBar value={target.songPlan.readiness} label="Acordes que já sabes" />
+            <p>
+              Já sabes {target.songPlan.chords.filter((c) => c.known).length} de {target.songPlan.chords.length} acordes. Hoje: {target.focus}
+            </p>
+            <a className="btn btn--primary" href={target.route}>
+              Abrir plano da música
+            </a>
+          </>
+        ) : (
+          <p className="muted">Escolhe uma música que queiras tocar: o plano diário passa a incluí-la e mostra os acordes que te faltam.</p>
+        )}
       </section>
 
       {recommended ? (

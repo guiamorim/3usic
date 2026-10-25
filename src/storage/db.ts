@@ -9,6 +9,7 @@ import {
   ProfileSchema,
   SettingsSchema,
   SkillStateSchema,
+  UserSongSchema,
   emptyData,
   type AppData,
   type Attempt,
@@ -19,10 +20,11 @@ import {
   type Profile,
   type Settings,
   type SkillState,
+  type UserSong,
 } from './schema';
 
 export const DB_NAME = 'braco-guitarra';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 interface BracoDB extends DBSchema {
   meta: { key: string; value: unknown };
@@ -32,9 +34,10 @@ interface BracoDB extends DBSchema {
   practice: { key: string; value: PracticeEntry };
   chordChanges: { key: string; value: ChordChangeRecord };
   planDays: { key: string; value: PlanDay };
+  songs: { key: string; value: UserSong };
 }
 
-type ListStore = 'lessons' | 'skills' | 'attempts' | 'practice' | 'chordChanges' | 'planDays';
+type ListStore = 'lessons' | 'skills' | 'attempts' | 'practice' | 'chordChanges' | 'planDays' | 'songs';
 
 export interface LoadResult {
   data: AppData;
@@ -55,6 +58,8 @@ export interface AppStorage {
   addPractice(p: PracticeEntry): Promise<void>;
   addChordChange(c: ChordChangeRecord): Promise<void>;
   putPlanDay(p: PlanDay): Promise<void>;
+  putSong(s: UserSong): Promise<void>;
+  deleteSong(id: string): Promise<void>;
   /** Atomically replaces everything (used by import). */
   replaceAll(data: AppData): Promise<void>;
   clearAll(): Promise<void>;
@@ -71,7 +76,7 @@ function validateList<T>(schema: z.ZodType<T>, raw: unknown[]): { valid: T[]; in
   return { valid, invalid };
 }
 
-const LIST_STORES: readonly ListStore[] = ['lessons', 'skills', 'attempts', 'practice', 'chordChanges', 'planDays'];
+const LIST_STORES: readonly ListStore[] = ['lessons', 'skills', 'attempts', 'practice', 'chordChanges', 'planDays', 'songs'];
 
 export class IndexedDbStorage implements AppStorage {
   readonly kind = 'indexeddb' as const;
@@ -89,6 +94,10 @@ export class IndexedDbStorage implements AppStorage {
           database.createObjectStore('practice', { keyPath: 'id' });
           database.createObjectStore('chordChanges', { keyPath: 'id' });
           database.createObjectStore('planDays', { keyPath: 'day' });
+        }
+        if (oldVersion < 2) {
+          // v2: songs imported by the user (device-local).
+          database.createObjectStore('songs', { keyPath: 'id' });
         }
       },
       blocking() {
@@ -124,7 +133,7 @@ export class IndexedDbStorage implements AppStorage {
       if (s.success) data.settings = s.data;
       else invalid++;
     }
-    const [lessons, skills, attempts, practice, chordChanges, planDays] = lists as unknown[][];
+    const [lessons, skills, attempts, practice, chordChanges, planDays, songs] = lists as unknown[][];
     const results = [
       validateList(LessonProgressSchema, lessons ?? []),
       validateList(SkillStateSchema, skills ?? []),
@@ -132,6 +141,7 @@ export class IndexedDbStorage implements AppStorage {
       validateList(PracticeEntrySchema, practice ?? []),
       validateList(ChordChangeRecordSchema, chordChanges ?? []),
       validateList(PlanDaySchema, planDays ?? []),
+      validateList(UserSongSchema, songs ?? []),
     ] as const;
     data.lessons = results[0].valid;
     data.skills = results[1].valid;
@@ -139,6 +149,7 @@ export class IndexedDbStorage implements AppStorage {
     data.practice = results[3].valid;
     data.chordChanges = results[4].valid;
     data.planDays = results[5].valid;
+    data.songs = results[6].valid;
     invalid += results.reduce((n, r) => n + r.invalid, 0);
     return { data, invalidRecords: invalid };
   }
@@ -170,6 +181,12 @@ export class IndexedDbStorage implements AppStorage {
   async putPlanDay(p: PlanDay): Promise<void> {
     await this.db.put('planDays', PlanDaySchema.parse(p));
   }
+  async putSong(song: UserSong): Promise<void> {
+    await this.db.put('songs', UserSongSchema.parse(song));
+  }
+  async deleteSong(id: string): Promise<void> {
+    await this.db.delete('songs', id);
+  }
 
   async replaceAll(data: AppData): Promise<void> {
     // Single readwrite transaction: if any put fails the whole import is rolled back.
@@ -184,6 +201,7 @@ export class IndexedDbStorage implements AppStorage {
     for (const p of data.practice) ops.push(tx.objectStore('practice').put(p));
     for (const c of data.chordChanges) ops.push(tx.objectStore('chordChanges').put(c));
     for (const d of data.planDays) ops.push(tx.objectStore('planDays').put(d));
+    for (const song of data.songs) ops.push(tx.objectStore('songs').put(song));
     await Promise.all([...ops, tx.done]);
   }
 
@@ -227,6 +245,12 @@ export class MemoryStorage implements AppStorage {
   }
   async putPlanDay(p: PlanDay): Promise<void> {
     this.data.planDays = [...this.data.planDays.filter((x) => x.day !== p.day), PlanDaySchema.parse(p)];
+  }
+  async putSong(song: UserSong): Promise<void> {
+    this.data.songs = [...this.data.songs.filter((x) => x.id !== song.id), UserSongSchema.parse(song)];
+  }
+  async deleteSong(id: string): Promise<void> {
+    this.data.songs = this.data.songs.filter((x) => x.id !== id);
   }
   async replaceAll(data: AppData): Promise<void> {
     this.data = structuredClone(data);

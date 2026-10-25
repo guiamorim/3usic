@@ -1,7 +1,7 @@
 # CLAUDE.md — Braço (PWA de aprendizagem de guitarra e violão)
 
 ## Objetivo e âmbito
-MVP de uma PWA offline-first para principiantes aprenderem guitarra/violão: onboarding, dashboard com plano diário, currículo de 9 módulos (21 lições), exercícios com repetição espaçada, biblioteca de acordes, afinador (microfone, processamento local), metrónomo, progresso local e export/import JSON. Sem conta, sem backend, sem IA, custo obrigatório 0 €. Interface em português europeu.
+MVP de uma PWA offline-first para principiantes aprenderem guitarra/violão: onboarding, dashboard com plano diário, currículo de 9 módulos (21 lições), exercícios com repetição espaçada, biblioteca de acordes, músicas (catálogo + importação de cifras ChordPro/texto + plano por música), afinador (microfone, processamento local), metrónomo, progresso local e export/import JSON. Sem conta, sem backend, sem IA, custo obrigatório 0 €. Interface em português europeu.
 
 ## Stack
 React 19 · TypeScript estrito · Vite 8 · vite-plugin-pwa (Workbox, `generateSW`) · IndexedDB via `idb` · validação com `zod` · Web Audio API · Vitest + Testing Library + fake-indexeddb · Playwright + axe-core · ESLint (typescript-eslint strict + react-hooks).
@@ -23,7 +23,8 @@ Os testes E2E correm sobre `dist/`: corre `npm run build` antes de `npm run test
 
 ## Estrutura
 - `src/domain/` — regras puras e testáveis: notas/frequências, guitarra, teoria (ortografia correta de notas), exercícios (geradores determinísticos com RNG), SRS (Leitner), progressão, plano diário, estatísticas.
-- `src/content/` — conteúdo original: acordes, currículo, rótulos.
+- `src/content/` — conteúdo original: acordes, currículo, rótulos, catálogo de músicas.
+- `src/domain/chordSymbols.ts`, `chordpro.ts`, `songPlan.ts`, `songLibrary.ts` — músicas: símbolos, parser/serializador, plano, catálogo+importadas.
 - `src/audio/` — YIN (`pitch.ts`), agendador do metrónomo (puro), motores Web Audio (`tuner.ts`, `metronome.ts`, `synth.ts`).
 - `src/storage/` — esquemas Zod (fonte única de verdade), IndexedDB/memória, export/import.
 - `src/app/` — store (React context), router por hash, layout, prompt de atualização.
@@ -37,6 +38,9 @@ Os testes E2E correm sobre `dist/`: corre `npm run build` antes de `npm run test
 - Microfone só por ação explícita; libertado ao sair da página/separador. Áudio nunca é gravado nem enviado.
 - CSP restritiva injetada na build (`vite.config.ts`). Nenhum pedido a terceiros (verificado em E2E).
 
+## Regras de conteúdo
+- Nunca incluir letras ou cifras completas de músicas protegidas em `src/content`: só metadados e progressão de acordes. Letra completa só para domínio público. Músicas importadas ficam no dispositivo (ADR 0006).
+
 ## Regras de custo zero
 - Nada de serviços pagos, APIs de IA, analytics, fontes externas ou CDNs. Dependências só open source.
 - Publicar/alojar requer autorização expressa do utilizador. A app tem de continuar a funcionar com `npm run build && npm run preview` sem qualquer serviço externo.
@@ -48,16 +52,16 @@ Os testes E2E correm sobre `dist/`: corre `npm run build` antes de `npm run test
 - Novas versões do esquema: incrementar `DB_VERSION`/`SCHEMA_VERSION`, acrescentar migração em `db.ts` (upgrade) e em `exportImport.ts` (`migrate`).
 
 ## Decisões
-Ver `docs/decisions/` (ADR 0001–0005).
+Ver `docs/decisions/` (ADR 0001–0006).
 
 ## Estado atual (2026-10-25)
-Todas as funcionalidades do MVP implementadas e testadas automaticamente. Não validado: afinador com microfones reais em vários dispositivos; instalação em iOS/Android reais; leitores de ecrã reais (só axe automático).
+Todas as funcionalidades do MVP implementadas e testadas automaticamente. Publicado em https://guiamorim.github.io/3usic/ (GitHub Pages, deploy automático no push para `main`). Músicas e importação de cifras acrescentadas (esquema v2). Não validado: afinador com microfones reais em vários dispositivos; instalação em iOS/Android reais; leitores de ecrã reais (só axe automático).
 
 ## Limitações conhecidas
 Ver `docs/ROADMAP.md` e `README.md` (secção Limitações).
 
 ## Próximas tarefas
 1. Testar o afinador em telemóveis reais (Android/iOS) e ajustar limiares.
-2. Repositório GitHub + CI (lint/test/build/E2E).
-3. Decidir alojamento (com autorização) e configurar cabeçalhos de segurança.
+2. Confirmar acordes do catálogo (sobretudo músicas brasileiras) com quem as toque.
+3. Cabeçalhos de segurança: GitHub Pages não permite configurá-los (CSP vai em meta).
 4. Reduzir bundle (avaliar `zod/mini`).

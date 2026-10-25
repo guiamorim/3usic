@@ -12,6 +12,7 @@ Sem backend, sem contas, sem dados transmitidos. Superfícies relevantes: (1) fi
 | CSP | `default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; connect-src 'self'…` injetada em `dist/index.html` | `vite.config.ts`; E2E corre com CSP ativa sem erros de consola |
 | Validação | Esquemas Zod `.strict()` para tudo o que é gravado, lido ou importado; limites de tamanho e de valores | `src/storage/schema.ts`; testes em `tests/integration/storage.test.ts` |
 | Importação | Limite 5 MB; apenas `JSON.parse`; rejeita campos desconhecidos, versões futuras, duplicados, `__proto__`; pré-visualização e confirmação; substituição numa só transação | `exportImport.ts`; testes unitários e E2E |
+| Importação de cifras | Só texto (máx. 400 KB por ficheiro, 200 000 caracteres); processado por um parser próprio de linhas, sem `eval` nem HTML; caracteres de controlo e de direção bidi removidos; mostrado como texto React; guardado só no dispositivo e validado com Zod | `chordpro.ts`; testes unitários; E2E confirma que `<script>` na letra aparece como texto |
 | Integridade local | Registos inválidos são ignorados e o utilizador é avisado; nunca apagados automaticamente | teste «ignora (sem apagar) registos corrompidos» |
 | Falhas de escrita | O estado só muda depois de a escrita ter sucesso; erro de quota tem mensagem específica | `src/app/store.tsx` |
 | Microfone | Pedido só ao carregar «Ativar microfone»; sem gravação; faixas paradas ao sair da página ou mudar de separador | E2E «liberta o microfone ao sair» |

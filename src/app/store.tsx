@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { openStorage, type AppStorage } from '../storage/db';
-import { DEFAULT_SETTINGS, emptyData, type AppData, type PracticeEntry, type Profile, type Settings } from '../storage/schema';
+import { DEFAULT_SETTINGS, emptyData, type AppData, type PracticeEntry, type Profile, type Settings, type UserSong } from '../storage/schema';
 import { localDay, newId } from '../domain/dates';
 import { updateSkill } from '../domain/srs';
 
@@ -25,6 +25,10 @@ interface StoreValue {
   recordChordChanges(pair: string, changes: number): Promise<boolean>;
   /** Marks a plan block; `logMinutes` records practice for blocks that are not tracked elsewhere. */
   togglePlanBlock(blockId: string, done: boolean, logMinutes?: { minutes: number; label: string }): Promise<boolean>;
+  /** Creates or updates an imported song; resolves to its id, or null on failure. */
+  saveSong(song: Omit<UserSong, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<string | null>;
+  /** Deletes an imported song (and clears it as target song). */
+  deleteSong(id: string): Promise<boolean>;
   replaceAll(data: AppData): Promise<boolean>;
   clearAll(): Promise<boolean>;
 }
@@ -192,6 +196,28 @@ export function StoreProvider({ children, storage: injected }: { children: React
             planDays: [...d.planDays.filter((p) => p.day !== day), next],
             practice: entry ? [...d.practice.filter((p) => p.id !== entry.id), entry] : d.practice,
           }),
+        );
+      },
+
+      saveSong: async (input) => {
+        const now = new Date().toISOString();
+        const prev = input.id ? dataRef.current.songs.find((x) => x.id === input.id) : undefined;
+        const song: UserSong = { ...input, id: prev?.id ?? newId('song'), createdAt: prev?.createdAt ?? now, updatedAt: now };
+        const ok = await persist((s) => s.putSong(song), (d) => ({ ...d, songs: [...d.songs.filter((x) => x.id !== song.id), song] }));
+        return ok ? song.id : null;
+      },
+
+      deleteSong: async (id) => {
+        const current = dataRef.current.settings ?? DEFAULT_SETTINGS;
+        const clearTarget = current.targetSongId === id;
+        const nextSettings: Settings = { ...current };
+        if (clearTarget) delete nextSettings.targetSongId;
+        return persist(
+          async (s) => {
+            await s.deleteSong(id);
+            if (clearTarget) await s.saveSettings(nextSettings);
+          },
+          (d) => ({ ...d, songs: d.songs.filter((x) => x.id !== id), settings: clearTarget ? nextSettings : d.settings }),
         );
       },
 

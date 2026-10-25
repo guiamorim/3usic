@@ -31,3 +31,10 @@ export const IconTools = () => (
     <circle cx="12" cy="12" r="4" />
   </svg>
 );
+export const IconMusic = () => (
+  <svg {...common}>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="17" cy="16" r="3" />
+  </svg>
+);

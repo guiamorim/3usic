@@ -134,3 +134,17 @@ describe('estatísticas de prática', () => {
     expect(s.last7.at(-1)).toEqual({ day: '2026-03-04', minutes: 20 });
   });
 });
+
+describe('plano diário com música objetivo', () => {
+  const base = { today: '2026-06-01', completedLessons: new Set<string>(), recommended: null, skills: [] };
+  it('substitui a aplicação genérica pela música, mesmo em sessões curtas', () => {
+    const targetSong = { title: 'Let It Be', route: '#/musicas/let-it-be', focus: 'aprende o acorde F.' };
+    for (const m of [10, 30]) {
+      const plan = buildDailyPlan({ ...base, targetSong, profile: { sessionMinutes: m, goal: 'chords-songs' } });
+      const app = plan.find((b) => b.id === 'aplicacao');
+      expect(app?.title).toBe('Música objetivo');
+      expect(app?.route).toBe('#/musicas/let-it-be');
+      expect(plan.reduce((s, b) => s + b.minutes, 0)).toBe(m);
+    }
+  });
+});

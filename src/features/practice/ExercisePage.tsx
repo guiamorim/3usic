@@ -87,7 +87,7 @@ function QuizSession({ title, subtitle, makeItems }: { title: string; subtitle: 
   );
 }
 
-export function ExercisePage({ exerciseId }: { exerciseId: string }) {
+export function ExercisePage({ exerciseId, arg }: { exerciseId: string; arg?: string }) {
   const { data } = useStore();
   const def = exerciseById(exerciseId);
   const dueIds = useMemo(
@@ -122,6 +122,6 @@ export function ExercisePage({ exerciseId }: { exerciseId: string }) {
       </Page>
     );
   }
-  if (def.kind === 'chord-changes') return <ChordChangesPage />;
+  if (def.kind === 'chord-changes') return <ChordChangesPage initialPair={arg} />;
   return <QuizSession title={def.title} subtitle={def.description} makeItems={makeQuiz} />;
 }

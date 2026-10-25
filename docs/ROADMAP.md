@@ -7,15 +7,21 @@ Ver README → Funcionalidades.
 1. Validar o afinador em telemóveis reais (Android Chrome, iOS Safari) e ajustar limiares de clareza/RMS.
 2. Testar instalação PWA e comportamento offline em iOS/Android reais.
 3. Teste com leitor de ecrã (TalkBack, VoiceOver).
-4. CI no GitHub Actions: `npm run check` + E2E.
+4. (Feito) CI no GitHub Actions: lint, tipos, testes, build, E2E e publicação.
 5. Reduzir o bundle (avaliar `zod/mini`, divisão por rotas).
 
+## Implementado depois do MVP
+- Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
+
 ## Planeado (não implementado)
+- Mais músicas brasileiras e portuguesas no catálogo, com acordes confirmados por alguém que as toque.
+- Editar uma cifra importada dentro da app.
+- Diagramas para mais acordes (power chords móveis, acordes diminutos, aumentados, com nona).
+- Rolagem automática da cifra ao ritmo da música.
 - Afinações alternativas (Drop D, meio-tom abaixo, DADGAD) e modo cromático no afinador.
 - Exercício de ritmo com toque em tempo real (medir desvio em relação ao metrónomo).
 - Reconhecimento de acordes de ouvido.
 - Mais lições: escalas pentatónicas, pestana com forma de A/Am, dedilhados avançados, leitura de partitura.
-- Repertório de domínio público com acordes.
 - Gravação local para autoavaliação (sem envio).
 - Lembretes opcionais (notificações locais), sem penalizações.
 - Sincronização entre dispositivos (exigiria backend: ver SECURITY.md).

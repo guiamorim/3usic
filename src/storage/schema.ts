@@ -2,7 +2,7 @@
 // IndexedDB or from an imported file is validated against them.
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const InstrumentSchema = z.enum(['electric', 'acoustic', 'steel-violao', 'classical']);
 export const ExperienceSchema = z.enum(['none', 'some', 'intermediate']);
@@ -64,7 +64,7 @@ export const PracticeEntrySchema = z
     id: z.string().min(1).max(80),
     day: DaySchema,
     seconds: z.number().int().min(0).max(24 * 3600),
-    source: z.enum(['lesson', 'exercise', 'metronome', 'tuner', 'plan', 'chord-changes']),
+    source: z.enum(['lesson', 'exercise', 'metronome', 'tuner', 'plan', 'chord-changes', 'song']),
     label: z.string().max(120),
   })
   .strict();
@@ -91,6 +91,27 @@ export const SettingsSchema = z
     metronomeSignature: z.string().max(5),
     metronomeAccent: z.boolean(),
     metronomeVolume: z.number().min(0).max(1),
+    /** Song the user is working towards (catalogue id or imported song id). */
+    targetSongId: z.string().min(1).max(80).optional(),
+    /** Library chord ids the user says they already know (besides those from lessons). */
+    knownChords: z.array(IdSchema).max(100).optional(),
+  })
+  .strict();
+
+export const MAX_USER_SONGS = 300;
+export const MAX_SONG_TEXT = 200_000;
+
+/** Song imported by the user. Stored only on this device; the sheet is kept as ChordPro text. */
+export const UserSongSchema = z
+  .object({
+    id: IdSchema,
+    title: z.string().min(1).max(120),
+    artist: z.string().max(120),
+    genre: GenreSchema,
+    year: z.number().int().min(1000).max(2100).nullable(),
+    chordpro: z.string().min(1).max(MAX_SONG_TEXT),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
   })
   .strict();
 
@@ -109,6 +130,7 @@ export const ExportFileSchema = z
         practice: z.array(PracticeEntrySchema).max(50_000),
         chordChanges: z.array(ChordChangeRecordSchema).max(10_000),
         planDays: z.array(PlanDaySchema).max(5000),
+        songs: z.array(UserSongSchema).max(MAX_USER_SONGS),
       })
       .strict(),
   })
@@ -126,6 +148,7 @@ export type PracticeEntry = z.infer<typeof PracticeEntrySchema>;
 export type ChordChangeRecord = z.infer<typeof ChordChangeRecordSchema>;
 export type PlanDay = z.infer<typeof PlanDaySchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
+export type UserSong = z.infer<typeof UserSongSchema>;
 export type ExportFile = z.infer<typeof ExportFileSchema>;
 export type AppData = ExportFile['data'];
 
@@ -146,5 +169,6 @@ export function emptyData(): AppData {
     practice: [],
     chordChanges: [],
     planDays: [],
+    songs: [],
   };
 }

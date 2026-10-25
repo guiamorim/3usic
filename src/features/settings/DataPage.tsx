@@ -150,7 +150,7 @@ export function DataPage() {
           <div className="confirm" role="group" aria-labelledby="import-confirm-title">
             <h3 id="import-confirm-title">Substituir os dados atuais?</h3>
             <p>
-              Ficheiro exportado em {new Date(pending.summary.exportedAt).toLocaleString('pt-PT')}: {pending.summary.lessons} lições concluídas, {pending.summary.attempts} resultados, {pending.summary.practiceMinutes} min de prática
+              Ficheiro exportado em {new Date(pending.summary.exportedAt).toLocaleString('pt-PT')}: {pending.summary.lessons} lições concluídas, {pending.summary.attempts} resultados, {pending.summary.practiceMinutes} min de prática, {pending.summary.songs} músicas importadas
               {pending.summary.hasProfile ? ', perfil incluído' : ''}.
             </p>
             <p>

@@ -7,9 +7,30 @@ import { chordById } from '../../content/chords';
 const PAIRS = ['A-D', 'D-G', 'G-C', 'C-Am', 'Am-E', 'Em-G', 'D-Em', 'C-Fmaj7', 'C-F-simples', 'E-A'] as const;
 const DURATION = 60;
 
-export function ChordChangesPage() {
+// Pairs are "X-Y"; the second id may itself contain a dash (e.g. "C-F-simples").
+function splitPair(pair: string): [string, string] {
+  const dash = pair.indexOf('-');
+  return [pair.slice(0, dash), pair.slice(dash + 1)];
+}
+
+function isValidPair(pair: string | undefined): pair is string {
+  if (!pair || pair.length > 40 || !pair.includes('-')) return false;
+  const [a, b] = splitPair(pair);
+  return a !== b && chordById(a) !== undefined && chordById(b) !== undefined;
+}
+
+function pairLabel(pair: string): string {
+  const [a, b] = splitPair(pair);
+  const name = (id: string) => (id === 'F-simples' ? 'F (simplificado)' : (chordById(id)?.symbol ?? id));
+  return `${name(a)} ↔ ${name(b)}`;
+}
+
+/** `initialPair` comes from the URL (e.g. a song plan); unknown chords are ignored. */
+export function ChordChangesPage({ initialPair }: { initialPair?: string }) {
   const { data, recordChordChanges } = useStore();
-  const [pair, setPair] = useState<string>(PAIRS[0]);
+  const custom = isValidPair(initialPair) && !(PAIRS as readonly string[]).includes(initialPair) ? initialPair : null;
+  const options: readonly string[] = custom ? [custom, ...PAIRS] : PAIRS;
+  const [pair, setPair] = useState<string>(isValidPair(initialPair) ? initialPair : PAIRS[0]);
   const [phase, setPhase] = useState<'ready' | 'running' | 'count' | 'saved'>('ready');
   const [remaining, setRemaining] = useState(DURATION);
   const [count, setCount] = useState('');
@@ -26,10 +47,7 @@ export function ChordChangesPage() {
     return () => clearInterval(id);
   }, [phase]);
 
-  // Pairs are "X-Y"; the second id may itself contain a dash (e.g. "C-F-simples").
-  const dash = pair.indexOf('-');
-  const a = pair.slice(0, dash);
-  const b = pair.slice(dash + 1);
+  const [a, b] = splitPair(pair);
   const chordA = chordById(a);
   const chordB = chordById(b);
   const history = data.chordChanges.filter((c) => c.pair === pair).slice(-5);
@@ -52,9 +70,9 @@ export function ChordChangesPage() {
       <label className="field">
         <span>Par de acordes</span>
         <select value={pair} onChange={(e) => setPair(e.target.value)} disabled={phase === 'running'}>
-          {PAIRS.map((p) => (
+          {options.map((p) => (
             <option key={p} value={p}>
-              {p.replace('-F-simples', ' ↔ F (simplificado)').replace('-', ' ↔ ')}
+              {pairLabel(p)}
             </option>
           ))}
         </select>

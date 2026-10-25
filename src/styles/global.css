@@ -182,7 +182,7 @@ main:focus {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 .app-nav a {
   display: flex;
@@ -1205,5 +1205,180 @@ legend {
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Songs ---------- */
+.song-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.song-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.song-card__title {
+  display: block;
+  font-size: 1.05rem;
+}
+.song-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+.chord-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.chord-chips li {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.chord-chips .is-known {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border-color: transparent;
+}
+.status-ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+.status-warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+.song-chords {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+.song-chords li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+.transpose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.transpose__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.transpose__value {
+  min-width: 3.5ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.song-steps {
+  padding-left: 1.25rem;
+}
+.song-steps li + li {
+  margin-top: 0.5rem;
+}
+.sheet {
+  overflow-x: auto;
+}
+.sheet-section {
+  margin: 0 0 1rem;
+}
+.sheet-section--chorus {
+  border-left: 3px solid var(--primary);
+  padding-left: 0.75rem;
+}
+.sheet-section--bridge {
+  border-left: 3px dashed var(--border);
+  padding-left: 0.75rem;
+}
+.sheet-label {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0 0 0.25rem;
+}
+.sheet-line {
+  margin: 0 0 0.35rem;
+  line-height: 1.35;
+}
+.sheet-line--chords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.sheet-seg {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: bottom;
+  white-space: pre;
+}
+.sheet-chord {
+  font-weight: 700;
+  color: var(--primary);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding-right: 0.3rem;
+}
+.sheet-chord--empty {
+  padding-right: 0;
+}
+.sheet-comment {
+  font-style: italic;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+.sheet-tab {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  margin: 0;
+  overflow-x: auto;
+}
+.sheet-gap {
+  height: 0.5rem;
+}
+.textarea {
+  width: 100%;
+  min-height: 12rem;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.code-sample {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--surface-2);
+  padding: 0.75rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  white-space: pre;
+}
+@media (min-width: 560px) {
+  .filters--songs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .filters--songs > :first-child {
+    grid-column: 1 / -1;
   }
 }

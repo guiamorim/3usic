@@ -229,6 +229,98 @@ test.describe('dados', () => {
   });
 });
 
+test.describe('músicas', () => {
+  test('filtra o catálogo, define música objetivo e treina a mudança sugerida', async ({ page }) => {
+    await onboard(page);
+    await page.getByRole('link', { name: 'Músicas' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Músicas', level: 1 })).toBeVisible();
+
+    await page.getByLabel('Estilo').selectOption('mpb-bossa');
+    await expect(page.getByRole('link', { name: /Asa Branca/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Wonderwall/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Limpar filtros' }).click();
+    await page.getByLabel('Época').selectOption('1990');
+    await expect(page.getByRole('link', { name: /Wonderwall/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Limpar filtros' }).click();
+    await page.getByLabel('Artista').selectOption('The Beatles');
+    await expect(page.getByRole('status').filter({ hasText: /^2 músicas$/ })).toBeVisible();
+
+    await page.getByRole('link', { name: /Let It Be/ }).click();
+    await expect(page.getByRole('heading', { name: 'Let It Be', level: 1 })).toBeVisible();
+    await expect(page.getByText('Já sabes 0 de 4 acordes.')).toBeVisible();
+    // Marking a chord as known updates the plan.
+    await page.getByRole('listitem').filter({ hasText: /^C/ }).getByLabel('Já sei').click();
+    await expect(page.getByText('Já sabes 1 de 4 acordes.')).toBeVisible();
+    // Transposing changes the shown key.
+    await page.getByRole('button', { name: 'Subir meio-tom' }).click();
+    await page.getByRole('button', { name: 'Subir meio-tom' }).click();
+    await expect(page.getByText('Tom: D')).toBeVisible();
+    await page.getByRole('button', { name: 'Repor original' }).click();
+
+    await page.getByRole('button', { name: 'Quero aprender esta' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Música objetivo definida' })).toBeVisible();
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Música objetivo' })).toBeVisible();
+    await expect(page.getByText(/«Let It Be»: aprende/)).toBeVisible();
+
+    await page.goto('/#/musicas/let-it-be');
+    await page.getByRole('link', { name: /↔/ }).first().click();
+    await expect(page.getByRole('heading', { name: 'Mudanças num minuto' })).toBeVisible();
+    await expect(page.getByLabel('Par de acordes')).not.toHaveValue('A-D');
+  });
+
+  test('importa uma cifra em texto simples, mostra-a e apaga-a', async ({ page }) => {
+    const external: string[] = [];
+    page.on('request', (r) => {
+      if (!r.url().startsWith('http://localhost:4173')) external.push(r.url());
+    });
+    await onboard(page);
+    await page.goto('/#/musicas/importar');
+    await page.getByLabel('Ou cola aqui a cifra').fill(
+      ['Canção de Teste - Banda X', 'Tom: G', '', '[Refrão]', 'G         D', 'Uma linha <script>alert(1)</script>', 'Em        C', 'Outra linha da letra'].join('\n'),
+    );
+    await page.getByRole('button', { name: 'Pré-visualizar' }).click();
+    await expect(page.getByText('Lido como texto simples. 4 acordes diferentes: G, D, Em, C.')).toBeVisible();
+    await expect(page.getByLabel('Título')).toHaveValue('Canção de Teste');
+    await page.getByLabel('Artista').fill('Banda Y');
+    await page.getByRole('button', { name: 'Guardar música' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Canção de Teste', level: 1 })).toBeVisible();
+    await expect(page.getByText('Banda Y', { exact: true })).toBeVisible();
+    // Imported text is rendered as text, never as HTML.
+    await expect(page.getByText('<script>alert(1)</script>', { exact: false })).toBeVisible();
+    expect(await page.locator('main script').count()).toBe(0);
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Canção de Teste', level: 1 })).toBeVisible();
+    await page.goto('/#/musicas');
+    await page.getByLabel('Origem').selectOption('user');
+    await expect(page.getByRole('link', { name: /Canção de Teste/ })).toBeVisible();
+
+    await page.getByRole('link', { name: /Canção de Teste/ }).click();
+    await page.getByRole('button', { name: 'Apagar música' }).click();
+    await page.getByRole('button', { name: /Confirmar: apagar/ }).click();
+    await expect(page.getByRole('heading', { name: 'Músicas', level: 1 })).toBeVisible();
+    await page.getByLabel('Origem').selectOption('user');
+    await expect(page.getByText('Nenhuma música corresponde aos filtros.')).toBeVisible();
+    expect(external).toEqual([]);
+  });
+
+  test('importa um ficheiro ChordPro', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/musicas/importar');
+    await page.setInputFiles('input[type=file]', {
+      name: 'cancao.cho',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('{title: Ficheiro CP}\n{artist: Alguém}\n{key: A}\n\n{start_of_chorus}\n[A]Lá [E]lá [D]lá\n{end_of_chorus}\n'),
+    });
+    await expect(page.getByText(/Lido como ChordPro\. 3 acordes diferentes/)).toBeVisible();
+    await page.getByRole('button', { name: 'Guardar música' }).click();
+    await expect(page.getByRole('heading', { name: 'Ficheiro CP', level: 1 })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Refrão' })).toBeVisible();
+  });
+});
+
 test.describe('offline e PWA', () => {
   test('manifest válido e funcionamento offline após o primeiro carregamento', async ({ page, context }) => {
     await page.goto('/');

@@ -22,6 +22,8 @@ export interface PlanInput {
   completedLessons: ReadonlySet<string>;
   recommended: Lesson | null;
   skills: readonly SkillState[];
+  /** Song the user is working towards; replaces the generic application block. */
+  targetSong?: { title: string; route: string; focus: string };
 }
 
 const APPLICATION_BY_GOAL: Record<Goal, { text: string; route: string }> = {
@@ -55,7 +57,7 @@ export function splitMinutes(total: number, weights: readonly number[]): number[
 }
 
 export function buildDailyPlan(input: PlanInput): PlanBlock[] {
-  const { profile, today, completedLessons, recommended, skills } = input;
+  const { profile, today, completedLessons, recommended, skills, targetSong } = input;
   const total = profile.sessionMinutes;
   const due = dueSkills(skills, today);
   const hasChords = completedLessons.has('l4-2') || completedLessons.has('l4-1');
@@ -101,7 +103,10 @@ export function buildDailyPlan(input: PlanInput): PlanBlock[] {
     weights.push(30);
   }
 
-  if (!short) {
+  if (targetSong) {
+    blocks.push({ id: 'aplicacao', title: 'Música objetivo', description: `«${targetSong.title}»: ${targetSong.focus}`, route: targetSong.route });
+    weights.push(short ? 10 : 20);
+  } else if (!short) {
     const app = APPLICATION_BY_GOAL[profile.goal];
     blocks.push({ id: 'aplicacao', title: 'Aplicação musical', description: app.text, route: app.route });
     weights.push(15);

@@ -114,7 +114,7 @@ describe('exportação e importação', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.file.data).toEqual(data);
-    expect(r.summary).toEqual({ exportedAt: NOW, hasProfile: true, lessons: 1, attempts: 1, practiceMinutes: 15 });
+    expect(r.summary).toEqual({ exportedAt: NOW, hasProfile: true, lessons: 1, attempts: 1, practiceMinutes: 15, songs: 0 });
 
     const s = await open(dbName());
     await s.replaceAll(r.file.data);
@@ -151,5 +151,78 @@ describe('exportação e importação', () => {
     const r = parseImport(text);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('músicas importadas (esquema v2)', () => {
+  const song = {
+    id: 'song-1',
+    title: 'Canção',
+    artist: 'Eu',
+    genre: 'pop' as const,
+    year: null,
+    chordpro: '{title: Canção}\n[C]Olá [G]mundo\n',
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+
+  it('guarda, lista e apaga músicas', async () => {
+    const name = dbName();
+    const a = await open(name);
+    await a.putSong(song);
+    a.close();
+    const b = await open(name);
+    expect((await b.loadAll()).data.songs).toEqual([song]);
+    await b.deleteSong('song-1');
+    expect((await b.loadAll()).data.songs).toEqual([]);
+    await expect(b.putSong({ ...song, chordpro: '' })).rejects.toThrow();
+  });
+
+  it('migra uma base de dados v1 sem perder dados', async () => {
+    const name = dbName();
+    const v1 = await openDB(name, 1, {
+      upgrade(db) {
+        db.createObjectStore('meta');
+        db.createObjectStore('lessons', { keyPath: 'lessonId' });
+        db.createObjectStore('skills', { keyPath: 'skillId' });
+        db.createObjectStore('attempts', { keyPath: 'id' });
+        db.createObjectStore('practice', { keyPath: 'id' });
+        db.createObjectStore('chordChanges', { keyPath: 'id' });
+        db.createObjectStore('planDays', { keyPath: 'day' });
+      },
+    });
+    await v1.put('meta', profile, 'profile');
+    await v1.put('meta', { metronomeBpm: 90, metronomeSignature: '4/4', metronomeAccent: true, metronomeVolume: 0.5 }, 'settings');
+    await v1.put('lessons', { lessonId: 'l1-1', completedAt: NOW });
+    v1.close();
+
+    const s = await open(name);
+    const { data, invalidRecords } = await s.loadAll();
+    expect(invalidRecords).toBe(0);
+    expect(data.profile).toEqual(profile);
+    expect(data.settings?.metronomeBpm).toBe(90);
+    expect(data.lessons).toHaveLength(1);
+    expect(data.songs).toEqual([]);
+    await s.putSong(song);
+    expect((await s.loadAll()).data.songs).toHaveLength(1);
+  });
+
+  it('importa ficheiros v1 (sem músicas)', () => {
+    const { songs: _omit, ...v1data } = emptyData();
+    void _omit;
+    const r = parseImport(JSON.stringify({ app: 'braco-guitarra', schemaVersion: 1, exportedAt: NOW, data: { ...v1data, profile } }));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.file.schemaVersion).toBe(2);
+      expect(r.file.data.songs).toEqual([]);
+    }
+  });
+
+  it('exporta e importa músicas; rejeita duplicadas', () => {
+    const data = { ...emptyData(), profile, songs: [song] };
+    const r = parseImport(serializeExport(data));
+    expect(r.ok && r.file.data.songs).toEqual([song]);
+    expect(r.ok && r.summary.songs).toBe(1);
+    expect(parseImport(serializeExport({ ...data, songs: [song, song] })).ok).toBe(false);
   });
 });
