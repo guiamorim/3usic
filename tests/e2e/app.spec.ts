@@ -1,0 +1,257 @@
+import { expect, test, type Page } from '@playwright/test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+async function onboard(page: Page, opts: { instrument?: string } = {}) {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao Braço' })).toBeVisible();
+  if (opts.instrument) await page.getByLabel(opts.instrument).check();
+  await page.getByRole('button', { name: 'Seguinte' }).click();
+  await page.getByLabel('Nunca toquei').check();
+  await page.getByRole('button', { name: 'Seguinte' }).click();
+  await page.getByLabel('Acompanhar canções com acordes').check();
+  await page.getByLabel('Rock').check();
+  await page.getByRole('button', { name: 'Seguinte' }).click();
+  await page.getByLabel('20 min').check();
+  await page.getByRole('button', { name: 'Começar a praticar' }).click();
+  await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+}
+
+async function answerAll(page: Page) {
+  // Answers every remaining question (first option) until the summary is shown.
+  for (let i = 0; i < 20; i++) {
+    await page.getByRole('group', { name: 'Opções de resposta' }).getByRole('button').first().click();
+    const next = page.getByRole('button', { name: /Seguinte|Ver resultado/ });
+    const last = (await next.textContent())?.includes('Ver resultado');
+    await next.click();
+    if (last) {
+      await expect(page.getByRole('heading', { name: /^Resultado:/ })).toBeVisible();
+      return;
+    }
+  }
+}
+
+test.describe('percurso principal', () => {
+  test('onboarding → lição → exercício → progresso → persistência após reabrir', async ({ page, context }) => {
+    const external: string[] = [];
+    const errors: string[] = [];
+    page.on('request', (r) => {
+      if (!r.url().startsWith('http://localhost:4173')) external.push(r.url());
+    });
+    page.on('pageerror', (e) => errors.push(String(e)));
+
+    await onboard(page, { instrument: 'Violão clássico (nylon)' });
+    await expect(page.getByText('Violão clássico (nylon) · 20 min por sessão')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Plano de hoje' })).toBeVisible();
+
+    // Recommended lesson, with instrument-specific note.
+    await page.getByRole('link', { name: /Começar lição/ }).click();
+    await expect(page.getByRole('heading', { name: 'Partes do instrumento e nomes das cordas', level: 1 })).toBeVisible();
+    await expect(page.getByText('No teu instrumento:')).toBeVisible();
+    const conclude = page.getByRole('button', { name: 'Concluir lição' });
+    await expect(conclude).toBeDisabled();
+    await page.getByLabel(/Consigo dizer o nome e o número de cada corda/).check();
+    await conclude.click();
+    await expect(page.getByRole('status').filter({ hasText: 'Lição marcada como concluída' })).toBeVisible();
+
+    // Linked exercise.
+    await page.getByRole('link', { name: /Exercício: Nomes das cordas/ }).click();
+    await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
+    await page.getByRole('group', { name: 'Opções de resposta' }).getByRole('button').first().click();
+    await expect(page.locator('.feedback')).toBeVisible();
+    await page.getByRole('button', { name: 'Seguinte' }).click();
+    await answerAll(page);
+    await expect(page.getByRole('heading', { name: /^Resultado: \d+ de 8/ })).toBeVisible();
+
+    // Progress reflects it.
+    await page.goto('/#/progresso');
+    await expect(page.getByText('1 de 21 concluídas')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Nomes das cordas' })).toBeVisible();
+    await expect(page.getByText(/Nomes das cordas: \d+\/8/)).toBeVisible();
+
+    // Close and reopen: data persists (IndexedDB).
+    await page.close();
+    const page2 = await context.newPage();
+    await page2.goto('/');
+    await expect(page2.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+    await expect(page2.getByText('1 de 21 lições concluídas')).toBeVisible();
+    await page2.goto('/#/aprender');
+    await expect(page2.getByRole('link', { name: /Partes do instrumento.*Concluída/ })).toBeVisible();
+
+    expect(errors).toEqual([]);
+    expect(external, 'a aplicação não deve contactar terceiros').toEqual([]);
+  });
+
+  test('plano de estudo: marcar bloco feito sobrevive a recarregar', async ({ page }) => {
+    await onboard(page);
+    const first = page.getByRole('checkbox', { name: 'Marcar «Aquecimento» como feito' });
+    await first.click();
+    await expect(first).toBeChecked();
+    await expect(page.locator('.badge').first()).toHaveText(/^1\//);
+    await page.reload();
+    await expect(page.getByRole('checkbox', { name: 'Marcar «Aquecimento» como feito' })).toBeChecked();
+  });
+
+  test('biblioteca de acordes: pesquisa e detalhe', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/acordes');
+    await page.getByLabel('Pesquisar').fill('re menor');
+    await expect(page.getByRole('link', { name: 'Dm Ré menor Média' })).toBeVisible();
+    await page.getByRole('link', { name: 'Dm Ré menor Média' }).click();
+    await expect(page.getByRole('heading', { name: 'Dm — Ré menor' })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Diagrama de Dm: 6\.ª corda não se toca/ })).toBeVisible();
+    await expect(page.getByText('Notas:')).toBeVisible();
+  });
+
+  test('mudanças num minuto valida e guarda o resultado', async ({ page }) => {
+    await onboard(page);
+    await page.clock.install();
+    await page.goto('/#/praticar/mudancas');
+    await page.getByRole('button', { name: 'Iniciar 60 segundos' }).click();
+    await page.clock.runFor(61_000);
+    await expect(page.getByText('Tempo! Quantas mudanças limpas fizeste?')).toBeVisible();
+    await page.getByLabel('Número de mudanças').fill('999');
+    await page.getByRole('button', { name: 'Guardar resultado' }).click();
+    await expect(page.getByText('Indica um número inteiro entre 0 e 300.')).toBeVisible();
+    await page.getByLabel('Número de mudanças').fill('22');
+    await page.getByRole('button', { name: 'Guardar resultado' }).click();
+    await expect(page.getByText('Melhor: 22 mudanças/min')).toBeVisible();
+  });
+});
+
+test.describe('metrónomo', () => {
+  test('inicia, mostra pulsação visual, altera BPM e pausa', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/metronomo?bpm=120');
+    await expect(page.getByLabel('Andamento', { exact: true })).toContainText('120');
+    await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+    await expect(page.locator('.beat--on')).toHaveCount(1, { timeout: 3000 });
+    // Visual pulse advances through the bar.
+    const seen = new Set<string>();
+    for (let i = 0; i < 15; i++) {
+      const t = await page.locator('.beat--on').textContent().catch(() => null);
+      if (t) seen.add(t);
+      await page.waitForTimeout(100);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+    await page.getByRole('button', { name: 'Aumentar 5 BPM' }).click();
+    await expect(page.getByLabel('Andamento', { exact: true })).toContainText('125');
+    await page.getByRole('button', { name: 'Pausar' }).click();
+    await expect(page.getByRole('button', { name: 'Iniciar', exact: true })).toBeVisible();
+    await expect(page.locator('.beat--on')).toHaveCount(0);
+  });
+});
+
+test.describe('afinador e microfone', () => {
+  test('recusa do microfone mostra alternativa', async ({ browser }) => {
+    const ctx = await browser.newContext({ permissions: [] });
+    const page = await ctx.newPage();
+    // Simulate a denial deterministically, independent of the browser's prompt behaviour.
+    await page.addInitScript(() => {
+      navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
+    });
+    await onboard(page);
+    await page.goto('/#/afinador');
+    await page.getByRole('button', { name: 'Ativar microfone' }).click();
+    await expect(page.getByRole('alert')).toContainText('acesso ao microfone foi recusado');
+    await expect(page.getByRole('button', { name: /6\.ª · E/ })).toBeVisible();
+    await ctx.close();
+  });
+
+  test('microfone autorizado: escuta e liberta o microfone ao sair', async ({ browser, browserName }) => {
+    test.skip(browserName !== 'chromium');
+    const ctx = await browser.newContext({ permissions: ['microphone'] });
+    const page = await ctx.newPage();
+    // Count live tracks to prove the microphone is released.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __tracks: MediaStreamTrack[] };
+      w.__tracks = [];
+      const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia = async (c) => {
+        const s = await orig(c);
+        w.__tracks.push(...s.getTracks());
+        return s;
+      };
+    });
+    await onboard(page);
+    await page.goto('/#/afinador');
+    await page.getByRole('button', { name: 'Ativar microfone' }).click();
+    await expect(page.getByRole('button', { name: 'Desligar microfone' })).toBeVisible();
+    const live = () => page.evaluate(() => (window as unknown as { __tracks: MediaStreamTrack[] }).__tracks.filter((t) => t.readyState === 'live').length);
+    expect(await live()).toBe(1);
+    await page.getByRole('link', { name: 'Início', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+    expect(await live()).toBe(0);
+    await ctx.close();
+  });
+});
+
+test.describe('dados', () => {
+  test('exporta, rejeita ficheiro inválido, importa com confirmação e apaga', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/aprender/l1-1');
+    await page.getByLabel(/Consigo dizer o nome/).check();
+    await page.getByRole('button', { name: 'Concluir lição' }).click();
+
+    await page.goto('/#/dados');
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar dados (JSON)' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^braco-progresso-\d{4}-\d{2}-\d{2}\.json$/);
+    // ASCII-only path: Chromium fails to read uploads from some non-ASCII paths in this environment.
+    const exported = join(mkdtempSync(join(tmpdir(), 'braco-')), 'export.json');
+    await download.saveAs(exported);
+
+    // Invalid file is rejected without changing anything.
+    await page.setInputFiles('#import-file', { name: 'mau.json', mimeType: 'application/json', buffer: Buffer.from('{"app":"outra"}') });
+    await expect(page.getByRole('alert')).toContainText('não foi exportado por esta aplicação');
+
+    // Delete everything (typed confirmation).
+    await page.getByRole('button', { name: 'Apagar dados…' }).click();
+    const del = page.getByRole('button', { name: 'Apagar definitivamente' });
+    await expect(del).toBeDisabled();
+    await page.getByLabel(/Para confirmar, escreve/).fill('apagar');
+    await del.click();
+    await expect(page.getByRole('heading', { name: 'Bem-vindo ao Braço' })).toBeVisible();
+
+    // Restore from the exported file, via the onboarding link.
+    await page.getByRole('link', { name: 'Importar ficheiro' }).click();
+    await page.setInputFiles('#import-file', exported);
+    await expect(page.getByRole('heading', { name: 'Substituir os dados atuais?' })).toBeVisible();
+    await expect(page.getByText(/1 lições concluídas/)).toBeVisible();
+    await page.getByRole('button', { name: 'Substituir dados' }).click();
+    await expect(page.getByText('Dados importados com sucesso.')).toBeVisible();
+    await page.goto('/');
+    await expect(page.getByText('1 de 21 lições concluídas')).toBeVisible();
+  });
+});
+
+test.describe('offline e PWA', () => {
+  test('manifest válido e funcionamento offline após o primeiro carregamento', async ({ page, context }) => {
+    await page.goto('/');
+    const manifest = await (await page.request.get('/manifest.webmanifest')).json();
+    expect(manifest.name).toContain('Braço');
+    expect(manifest.display).toBe('standalone');
+    expect(manifest.icons.some((i: { sizes: string }) => i.sizes === '512x512')).toBe(true);
+
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    // Make sure the SW controls the page before going offline.
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    await onboard(page);
+
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+    await page.goto('/#/acordes/G');
+    await expect(page.getByRole('heading', { name: 'G — Sol maior' })).toBeVisible();
+    await page.goto('/#/afinador');
+    await expect(page.getByRole('button', { name: 'Ativar microfone' })).toBeVisible();
+    await page.goto('/#/praticar/ritmo');
+    await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
+    await context.setOffline(false);
+  });
+});

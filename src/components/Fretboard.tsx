@@ -26,7 +26,7 @@ export function Fretboard({ strings, maxFret, highlight, hideLabels, label }: Pr
 
   return (
     <div className="fretboard-scroll">
-      <svg className="fretboard" viewBox={`0 0 ${w} ${h}`} width={w} role="img" aria-label={label}>
+      <svg className="fretboard" viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: `${w * 1.6}px` }} role="img" aria-label={label}>
         <title>{label}</title>
         <rect x={openW - 3} y={12} width={4} height={rowH * ordered.length} className="fb-nut" />
         {Array.from({ length: maxFret }, (_, f) => (

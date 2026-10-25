@@ -51,7 +51,14 @@ export function DataPage() {
       setMessage({ kind: 'error', text: 'O ficheiro é demasiado grande (máximo 5 MB).' });
       return;
     }
-    const result = parseImport(await file.text());
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setMessage({ kind: 'error', text: 'Não foi possível ler o ficheiro.' });
+      return;
+    }
+    const result = parseImport(text);
     if (!result.ok) {
       setMessage({ kind: 'error', text: result.error });
       return;

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Fake microphone (a synthetic tone) so the tuner can be exercised without hardware.
+const FAKE_MEDIA = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'];
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
@@ -12,8 +15,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chromium', use: { ...devices['Pixel 7'], launchOptions: { args: FAKE_MEDIA } } },
+    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], launchOptions: { args: FAKE_MEDIA } } },
   ],
   webServer: {
     command: 'npm run preview',

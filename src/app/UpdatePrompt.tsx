@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 /** Controlled updates: a new version waits until the user chooses to reload. */
@@ -7,6 +8,13 @@ export function UpdatePrompt() {
     offlineReady: [offlineReady, setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW();
+
+  // The "offline ready" note is informative only: hide it after a few seconds.
+  useEffect(() => {
+    if (!offlineReady) return;
+    const id = setTimeout(() => setOfflineReady(false), 6000);
+    return () => clearTimeout(id);
+  }, [offlineReady, setOfflineReady]);
 
   if (!needRefresh && !offlineReady) return null;
   return (
