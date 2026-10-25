@@ -120,3 +120,16 @@ export function planCompletion(blocks: readonly PlanBlock[], planDay: PlanDay | 
   const doneIds = new Set(planDay?.doneBlockIds ?? []);
   return { done: blocks.filter((b) => doneIds.has(b.id)).length, total: blocks.length };
 }
+
+/**
+ * Next step to do: the first unfinished block after `currentId` (in plan order), wrapping around
+ * to unfinished blocks before it. Null when everything is done.
+ */
+export function nextBlock(plan: readonly PlanBlock[], done: ReadonlySet<string>, currentId?: string): PlanBlock | null {
+  const start = currentId ? plan.findIndex((b) => b.id === currentId) + 1 : 0;
+  for (let i = 0; i < plan.length; i++) {
+    const b = plan[(start + i) % plan.length];
+    if (b && b.id !== currentId && !done.has(b.id)) return b;
+  }
+  return null;
+}

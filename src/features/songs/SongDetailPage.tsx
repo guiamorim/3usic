@@ -11,7 +11,8 @@ import { findSong, VERSION_LABEL, versionOf, type SongVersion } from '../../doma
 import { ORIGIN_LABEL } from '../../content/songs';
 import { buildSongPlan, chordLabel, knownChordIds, suggestCapo, type SongStep } from '../../domain/songPlan';
 import { SongSheet } from './SongSheet';
-import { parseChordPro } from '../../domain/chordpro';
+import { parseChordPro, songChords } from '../../domain/chordpro';
+import { ChordStrip } from './ChordStrip';
 import { DIFFICULTY_LABEL } from './SongsPage';
 
 const FLAT_KEYS = new Set(['F', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm']);
@@ -297,6 +298,7 @@ export function SongDetailPage({ songId }: { songId: string }) {
           {linkedSheet && linked ? (
             <>
               <p className="muted">A tua cifra, guardada só neste dispositivo.</p>
+              <ChordStrip symbols={songChords(linkedSheet)} />
               <SongSheet song={linkedSheet} />
               <div className="button-row">
                 <a className="btn btn--secondary" href={href('musicas', linked.id)}>
@@ -328,6 +330,7 @@ export function SongDetailPage({ songId }: { songId: string }) {
 
       <section className="card" aria-labelledby="cifra">
         <h2 id="cifra">{song.fullSheet ? 'Cifra' : 'Progressão'}</h2>
+        <ChordStrip symbols={songChords(shapes)} />
         <SongSheet song={shapes} />
       </section>
 

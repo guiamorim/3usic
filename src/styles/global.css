@@ -19,8 +19,17 @@
   --danger-bg: #fbe7e5;
   --info-bg: #eef1f6;
   --focus: #1f5fbf;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px rgb(0 0 0 / 0.04);
+  --radius: 18px;
+  --shadow: 0 1px 2px rgb(60 30 10 / 0.06), 0 6px 18px rgb(60 30 10 / 0.07);
+  --hero-from: #7a3e1d;
+  --hero-to: #c06a2b;
+  --hero-text: #ffffff;
+  --tile-a: #fde8d7;
+  --tile-b: #e3effd;
+  --tile-c: #f6e1f0;
+  --tile-d: #e2f4e6;
+  --tile-e: #fff3cc;
+  --tile-f: #e9e4fb;
   --nav-h: 64px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
@@ -47,6 +56,15 @@
     --info-bg: #1f2633;
     --focus: #8ab4ff;
     --shadow: none;
+    --hero-from: #5a2c12;
+    --hero-to: #8a4a1e;
+    --hero-text: #fff7ef;
+    --tile-a: #3a2617;
+    --tile-b: #1c2a3a;
+    --tile-c: #351f2f;
+    --tile-d: #1b3122;
+    --tile-e: #362e12;
+    --tile-f: #262140;
   }
 }
 
@@ -58,6 +76,24 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* iOS: no double-tap zoom on controls (tapping +1 / +5 quickly zoomed the page and broke the layout),
+   and inputs at 16px or more so focusing them does not zoom either. */
+a,
+button,
+input,
+select,
+label,
+summary,
+textarea {
+  touch-action: manipulation;
+}
+input,
+select,
+textarea {
+  font-size: max(16px, 1rem);
 }
 
 body {
@@ -143,6 +179,8 @@ main:focus {
 .app-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.75rem 1rem;
   padding-top: max(0.75rem, env(safe-area-inset-top));
 }
@@ -474,8 +512,16 @@ legend {
 }
 .filters {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0 0.75rem;
+}
+.filters > * {
+  min-width: 0;
+}
+.field select,
+.field input:not([type='range']) {
+  width: 100%;
+  max-width: 100%;
 }
 @media (min-width: 560px) {
   .filters {
@@ -612,11 +658,41 @@ legend {
 }
 .plan__item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   gap: 0.75rem;
   align-items: start;
-  padding: 0.75rem 0;
+  padding: 0.85rem 0.6rem;
+  margin: 0 -0.6rem;
+  border-radius: 14px;
   border-bottom: 1px solid var(--border);
+}
+.plan__item--next {
+  background: var(--surface-2);
+  border-bottom-color: transparent;
+}
+.plan__icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 1.2rem;
+}
+.plan__item--next .plan__icon {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.plan__item--done .plan__icon {
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-weight: 800;
+}
+.plan__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 .plan__item:last-child {
   border-bottom: 0;
@@ -627,12 +703,13 @@ legend {
   font-size: 0.92rem;
 }
 .plan__check {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin: -0.4rem 0 0 -0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
   cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
 }
 .plan__check input {
   width: 1.4rem;
@@ -910,7 +987,7 @@ legend {
 .fretboard {
   display: block;
   width: 100%;
-  min-width: 320px;
+  min-width: 280px;
   height: auto;
 }
 .fb-nut {
@@ -1418,7 +1495,7 @@ legend {
   min-height: 12rem;
   font: inherit;
   font-family: var(--mono);
-  font-size: 0.9rem;
+  font-size: 16px;
   padding: 0.5rem 0.75rem;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -1436,7 +1513,7 @@ legend {
 }
 @media (min-width: 560px) {
   .filters--songs {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .filters--songs > :first-child {
     grid-column: 1 / -1;
@@ -1528,4 +1605,292 @@ legend {
   width: 2rem;
   height: 2rem;
   font-size: 0.85rem;
+}
+
+/* ---------- Chord strip (pinned while the sheet scrolls) ---------- */
+.chord-strip {
+  position: relative;
+  margin: 0 -1rem 0.75rem;
+  padding: 0.35rem 1rem 0.35rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.chord-strip--pinned {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 6px 10px -8px rgb(0 0 0 / 0.35);
+}
+.chord-strip__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.chord-strip__list li {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 54px;
+}
+.chord-strip__name {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.chord-strip .chord-diagram {
+  width: 54px;
+  height: auto;
+}
+.chord-strip__list {
+  padding-right: 2.75rem;
+}
+.chord-strip__toggle {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.25rem;
+  min-width: 40px;
+  padding: 0.2rem 0.4rem;
+  font-size: 1.1rem;
+}
+
+/* ---------- Keep screen on ---------- */
+.awake-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.awake-toggle--on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.awake-toggle:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- Visual refresh ---------- */
+h1 {
+  letter-spacing: -0.01em;
+}
+.card > h2,
+.card__head h2 {
+  font-size: 1.15rem;
+}
+.btn {
+  border-radius: 12px;
+  transition: background-color 120ms, transform 80ms;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn--primary {
+  box-shadow: 0 2px 6px rgb(122 62 29 / 0.25);
+}
+.app-nav a[aria-current='page'] svg {
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  width: 44px;
+  box-sizing: content-box;
+  margin: 0 -10px;
+}
+.song-card {
+  transition: transform 120ms;
+}
+.song-card:active {
+  transform: scale(0.99);
+}
+
+/* Home hero */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.25rem 0 1rem;
+  padding: 1.25rem;
+  border-radius: 22px;
+  color: var(--hero-text);
+  background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+  box-shadow: 0 10px 24px -12px rgb(122 62 29 / 0.6);
+}
+.hero__eyebrow {
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.hero__title {
+  font-size: 2rem;
+  margin: 0.1rem 0;
+  color: inherit;
+}
+.hero__title:focus {
+  outline: none;
+}
+.hero__sub {
+  margin: 0;
+  opacity: 0.92;
+}
+.btn--hero {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  min-height: 52px;
+  margin-top: 0.5rem;
+  background: var(--hero-text);
+  color: var(--hero-from);
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
+}
+.ring__track {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.25);
+  stroke-width: 7;
+}
+.ring__value {
+  fill: none;
+  stroke: var(--hero-text);
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dasharray 300ms;
+}
+.ring__text {
+  fill: var(--hero-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* How it works */
+.how-to summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+.how-to__steps {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.how-to__steps li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.how-to__num {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 800;
+}
+
+/* Shortcut tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 84px;
+  padding: 0.6rem 0.25rem;
+  border-radius: 16px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+}
+.tile__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.tile--a { background: var(--tile-a); }
+.tile--b { background: var(--tile-b); }
+.tile--c { background: var(--tile-c); }
+.tile--d { background: var(--tile-d); }
+.tile--e { background: var(--tile-e); }
+.tile--f { background: var(--tile-f); }
+.card--accent {
+  border-left: 5px solid var(--primary);
+}
+
+/* Guided plan bar */
+.plan-bar {
+  position: fixed;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 0.5rem);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 744px;
+  margin: 0 auto;
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  border-radius: 16px;
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.25);
+}
+.plan-bar__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.plan-bar__step {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+.plan-bar__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-bar .btn--primary,
+.plan-bar .btn--primary:hover:not(:disabled) {
+  background: #e8a873;
+  color: #1b120c;
+  white-space: nowrap;
+}
+.plan-bar__close {
+  color: var(--bg);
+  min-width: 40px;
+}
+.app:has(.plan-bar) {
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 5rem);
+}
+@media (min-width: 900px) {
+  .plan-bar {
+    left: 216px;
+    bottom: 1rem;
+  }
 }

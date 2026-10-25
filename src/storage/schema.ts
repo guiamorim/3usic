@@ -97,6 +97,8 @@ export const SettingsSchema = z
     knownChords: z.array(IdSchema).max(100).optional(),
     /** Which version of song sheets to show by default. */
     songVersion: z.enum(['simple', 'full']).optional(),
+    /** Keep the screen on while the app is open (Screen Wake Lock API). */
+    keepAwake: z.boolean().optional(),
   })
   .strict();
 

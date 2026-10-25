@@ -3,7 +3,7 @@ import { LESSONS, MODULES } from '../../src/content/curriculum';
 import { EXERCISES, exerciseById } from '../../src/domain/exercises';
 import { chordById } from '../../src/content/chords';
 import { lessonStatus, missingPrerequisites, moduleProgress, overallProgress, recommendedLesson } from '../../src/domain/progression';
-import { buildDailyPlan, splitMinutes } from '../../src/domain/plan';
+import { buildDailyPlan, nextBlock, splitMinutes, type BlockKind } from '../../src/domain/plan';
 import { practiceStats } from '../../src/domain/stats';
 import { updateSkill } from '../../src/domain/srs';
 
@@ -146,5 +146,22 @@ describe('plano diário com música objetivo', () => {
       expect(app?.route).toBe('#/musicas/let-it-be');
       expect(plan.reduce((s, b) => s + b.minutes, 0)).toBe(m);
     }
+  });
+});
+
+describe('modo guiado: passo seguinte do plano', () => {
+  const block = (id: BlockKind) => ({ id, title: id, description: '', minutes: 5, route: `#/${id}` });
+  const plan = (['aquecimento', 'revisao', 'tecnica', 'novo', 'aplicacao'] as const).map(block);
+
+  it('primeiro passo por fazer, a partir do início ou do passo atual', () => {
+    expect(nextBlock(plan, new Set())?.id).toBe('aquecimento');
+    expect(nextBlock(plan, new Set(['aquecimento']))?.id).toBe('revisao');
+    expect(nextBlock(plan, new Set(['aquecimento', 'revisao']), 'revisao')?.id).toBe('tecnica');
+  });
+
+  it('volta aos passos saltados e devolve null quando está tudo feito', () => {
+    expect(nextBlock(plan, new Set(['novo', 'aplicacao']), 'aplicacao')?.id).toBe('aquecimento');
+    expect(nextBlock(plan, new Set(plan.map((b) => b.id)))).toBeNull();
+    expect(nextBlock(plan, new Set(['aquecimento', 'revisao', 'tecnica', 'novo']), 'aplicacao')).toBeNull();
   });
 });

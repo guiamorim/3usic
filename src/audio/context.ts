@@ -75,3 +75,27 @@ export async function getOutputContext(): Promise<AudioContext> {
   if (shared.state !== 'running') await shared.resume();
   return shared;
 }
+
+const masters = new WeakMap<BaseAudioContext, AudioNode>();
+
+/**
+ * Output bus: a limiter in front of the speakers, so individual sounds can be loud (phone
+ * speakers are weak) without clipping when several notes overlap.
+ */
+export function outputNode(ctx: BaseAudioContext): AudioNode {
+  let node = masters.get(ctx);
+  if (!node) {
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -10;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.15;
+    const gain = ctx.createGain();
+    gain.gain.value = 1.4;
+    limiter.connect(gain).connect(ctx.destination);
+    node = limiter;
+    masters.set(ctx, node);
+  }
+  return node;
+}

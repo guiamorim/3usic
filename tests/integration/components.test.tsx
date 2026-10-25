@@ -79,7 +79,8 @@ describe('App', () => {
     await user.click(screen.getByLabelText('10 min'));
     await user.click(screen.getByRole('button', { name: 'Começar a praticar' }));
     await screen.findByRole('heading', { name: 'Hoje' });
-    expect(screen.getByText('Guitarra elétrica · 10 min por sessão')).toBeInTheDocument();
+    expect(screen.getByText(/Guitarra elétrica/)).toBeInTheDocument();
+    expect(screen.getByText(/10 min por sessão/)).toBeInTheDocument();
     // "Some experience" starts at module 3.
     expect(screen.getByText(/Módulo 3/)).toBeInTheDocument();
     const saved = await storage.loadAll();

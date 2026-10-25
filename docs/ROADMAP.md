@@ -12,6 +12,7 @@ Ver README → Funcionalidades.
 
 ## Implementado depois do MVP
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
+- Modo guiado pelo plano, ecrã sempre ligado, diagramas fixos na cifra, novo visual do Início, correções de toque duplo/zoom no iOS (2026-10-25).
 - Tocar junto com reconhecimento de acordes, separador Batidas, atalho para letra + colar cifra na música, afinador com Hz/histórico/modo cromático, correções de áudio no iPhone (2026-10-25).
 - Rock clássico BR/PT/US/UK, filtro por país, versões simplificada e mais próxima do original, power chords móveis (2026-10-25).
 

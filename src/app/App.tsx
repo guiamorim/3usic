@@ -2,6 +2,8 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { useStore } from './store';
 import { useRoute } from './router';
 import { Layout } from './Layout';
+import { useWakeLock } from './wakeLock';
+import { PlanBar } from './PlanBar';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { CurriculumPage } from '../features/curriculum/CurriculumPage';
@@ -75,7 +77,9 @@ function route(segments: string[]): ReactNode {
 }
 
 export function App() {
-  const { status, data, storageKind, invalidRecords, saveError, dismissSaveError } = useStore();
+  const { status, data, storageKind, invalidRecords, saveError, dismissSaveError, settings, saveSettings } = useStore();
+  const keepAwake = settings.keepAwake ?? false;
+  const wake = useWakeLock(keepAwake);
   const segments = useRoute();
   const section = segments[0] ?? '';
 
@@ -120,7 +124,12 @@ export function App() {
   // Without a profile only onboarding, data import and privacy pages are reachable.
   const needsOnboarding = !data.profile && !['dados', 'privacidade'].includes(section);
   return (
-    <Layout section={needsOnboarding ? 'onboarding' : section} banner={banner} hideNav={needsOnboarding}>
+    <Layout
+      section={needsOnboarding ? 'onboarding' : section}
+      banner={banner}
+      hideNav={needsOnboarding}
+      awake={{ enabled: keepAwake, state: wake, toggle: () => void saveSettings({ keepAwake: !keepAwake }) }}
+    >
       {needsOnboarding ? (
         <>
           <OnboardingPage />
@@ -129,7 +138,10 @@ export function App() {
           </p>
         </>
       ) : (
-        route(segments)
+        <>
+          {route(segments)}
+          {section !== '' && <PlanBar />}
+        </>
       )}
     </Layout>
   );

@@ -1,4 +1,4 @@
-import { getOutputContext } from './context';
+import { getOutputContext, outputNode } from './context';
 import { collectBeats, type SchedulerState, type TimeSignature } from './metronomeScheduler';
 
 export interface MetronomeConfig {
@@ -84,7 +84,7 @@ export class Metronome {
     gain.gain.setValueAtTime(0.0001, time);
     gain.gain.exponentialRampToValueAtTime(vol, time + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(outputNode(ctx));
     osc.start(time);
     osc.stop(time + 0.08);
   }

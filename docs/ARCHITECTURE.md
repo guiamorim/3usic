@@ -31,6 +31,12 @@ PWA                                 ── vite-plugin-pwa (Workbox generateSW, 
 
 A versão 2 acrescenta o store `songs` (migração `oldVersion < 2` em `db.ts`) e os campos opcionais `targetSongId` e `knownChords` nas preferências. Ficheiros exportados v1 são migrados ao importar (`songs: []`).
 
+## Navegação guiada
+- `src/app/useTodayPlan.ts`: plano do dia partilhado pelo Início e pela barra guiada. `nextBlock` (em `domain/plan.ts`) escolhe o passo seguinte por fazer.
+- `src/app/planFlow.ts`: passo ativo guardado em `sessionStorage` (sobrevive a navegar dentro da atividade). `src/app/PlanBar.tsx` mostra a barra «Feito · seguinte».
+- `src/app/wakeLock.ts`: `useWakeLock(settings.keepAwake)`, readquire o bloqueio quando a página volta a ficar visível.
+- Saída de áudio: `outputNode(ctx)` (limitador + ganho) em `audio/context.ts`, para sons mais altos nos altifalantes do telemóvel sem distorção.
+
 ## Prática com microfone e batidas
 - `src/domain/chordDetect.ts`: FFT, cromagrama (130–1100 Hz, fora dos cliques do metrónomo) e `judgeChord`, que compara o acorde esperado com as 24 tríades maiores/menores (modelos com harmónicos). Verifica «é este o acorde?», não transcreve livremente.
 - `src/domain/playAlong.ts`: linha do tempo em tempos (compassos do catálogo ou tempos por acorde nas cifras importadas), repetição, veredito por acorde (≥ 35 % dos frames com som reconhecidos) e pontuação.

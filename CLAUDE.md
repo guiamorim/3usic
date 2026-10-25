@@ -55,7 +55,7 @@ Os testes E2E correm sobre `dist/`: corre `npm run build` antes de `npm run test
 Ver `docs/decisions/` (ADR 0001–0006).
 
 ## Estado atual (2026-10-25)
-Todas as funcionalidades do MVP implementadas e testadas automaticamente. Publicado em https://guiamorim.github.io/3usic/ (GitHub Pages, deploy automático no push para `main`). Músicas e importação de cifras acrescentadas (esquema v2). 80 músicas, versões simplificada/original (`settings.songVersion`), filtro por país. Tocar junto (`#/musicas/:id/tocar`, reconhecimento de acordes), separador Batidas (`#/batidas`), letra via cifra colada pelo utilizador (`UserSong.catalogId`). Não validado: afinador com microfones reais em vários dispositivos; instalação em iOS/Android reais; leitores de ecrã reais (só axe automático).
+Todas as funcionalidades do MVP implementadas e testadas automaticamente. Publicado em https://guiamorim.github.io/3usic/ (GitHub Pages, deploy automático no push para `main`). Músicas e importação de cifras acrescentadas (esquema v2). 80 músicas, versões simplificada/original (`settings.songVersion`), filtro por país. Tocar junto (`#/musicas/:id/tocar`, reconhecimento de acordes), separador Batidas (`#/batidas`), letra via cifra colada pelo utilizador (`UserSong.catalogId`). Modo guiado (`PlanBar`, `planFlow`), `settings.keepAwake` (wake lock). Não validado: afinador com microfones reais em vários dispositivos; instalação em iOS/Android reais; leitores de ecrã reais (só axe automático).
 
 ## Limitações conhecidas
 Ver `docs/ROADMAP.md` e `README.md` (secção Limitações).

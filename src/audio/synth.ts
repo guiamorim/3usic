@@ -1,5 +1,5 @@
 import { midiToFrequency } from '../domain/notes';
-import { getOutputContext } from './context';
+import { getOutputContext, outputNode } from './context';
 
 /** Short plucked-string-like tone. Returns the end time. */
 export function pluck(ctx: AudioContext, midi: number, when: number, duration = 1.2, volume = 0.35, a4 = 440): number {
@@ -21,7 +21,7 @@ export function pluck(ctx: AudioContext, midi: number, when: number, duration = 
   g2.gain.value = 0.3;
   osc.connect(filter);
   osc2.connect(g2).connect(filter);
-  filter.connect(gain).connect(ctx.destination);
+  filter.connect(gain).connect(outputNode(ctx));
   osc.start(when);
   osc2.start(when);
   osc.stop(when + duration + 0.05);
@@ -39,10 +39,28 @@ export async function playInterval(low: number, high: number): Promise<void> {
   pluck(ctx, high, t + 1.7, 1.4, 0.25);
 }
 
-/** Sustained reference tone for tuning by ear. */
-export async function playReference(midi: number, a4 = 440, seconds = 2.5): Promise<void> {
+/**
+ * Sustained reference tone for tuning by ear. A bright sawtooth: phone speakers barely reproduce
+ * the low strings' fundamentals (82–110 Hz), so the harmonics carry the pitch.
+ */
+export async function playReference(midi: number, a4 = 440, seconds = 3): Promise<void> {
   const ctx = await getOutputContext();
-  pluck(ctx, midi, ctx.currentTime + 0.02, seconds, 0.4, a4);
+  const when = ctx.currentTime + 0.02;
+  const f = midiToFrequency(midi, a4);
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.value = f;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = Math.min(6000, Math.max(1500, f * 12));
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(0.9, when + 0.02);
+  gain.gain.setValueAtTime(0.9, when + seconds * 0.6);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + seconds);
+  osc.connect(filter).connect(gain).connect(outputNode(ctx));
+  osc.start(when);
+  osc.stop(when + seconds + 0.05);
 }
 
 /** Strums the sounding notes of a chord from low to high. */
@@ -82,7 +100,7 @@ export function chuckAt(ctx: AudioContext, when: number, volume = 0.5): void {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(volume, when);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
-  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.connect(filter).connect(gain).connect(outputNode(ctx));
   src.start(when);
   src.stop(when + 0.08);
 }
@@ -97,7 +115,7 @@ export function clickAt(ctx: AudioContext, when: number, accent: boolean, volume
   gain.gain.setValueAtTime(0.0001, when);
   gain.gain.exponentialRampToValueAtTime(v, when + 0.002);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.07);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(outputNode(ctx));
   osc.start(when);
   osc.stop(when + 0.08);
 }

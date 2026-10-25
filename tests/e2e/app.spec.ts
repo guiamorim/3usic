@@ -42,7 +42,8 @@ test.describe('percurso principal', () => {
     page.on('pageerror', (e) => errors.push(String(e)));
 
     await onboard(page, { instrument: 'Violão clássico (nylon)' });
-    await expect(page.getByText('Violão clássico (nylon) · 20 min por sessão')).toBeVisible();
+    await expect(page.getByText(/Violão clássico \(nylon\)/).first()).toBeVisible();
+    await expect(page.getByText(/20 min por sessão/)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Plano de hoje' })).toBeVisible();
 
     // Recommended lesson, with instrument-specific note.
@@ -283,7 +284,7 @@ test.describe('músicas', () => {
     await page.goto('/#/musicas/evidencias');
     await expect(page.getByRole('heading', { name: 'Evidências', level: 1 })).toBeVisible();
     await expect(page.getByLabel('Simplificada')).toBeChecked();
-    const sheet = page.getByRole('region', { name: 'Progressão' });
+    const sheet = page.getByRole('region', { name: 'Progressão' }).locator('.sheet');
     await expect(sheet.getByText('Cº', { exact: true })).toHaveCount(0);
     await page.getByLabel('Mais próxima do original').click();
     await expect(page.getByLabel('Mais próxima do original')).toBeChecked();
@@ -360,8 +361,8 @@ test.describe('prática guiada', () => {
 
   test('separador Batidas: abre um padrão, toca e mostra o cursor', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByText('Por onde começar?')).toBeVisible();
-    await page.getByRole('link', { name: 'Batidas', exact: true }).click();
+    await expect(page.getByText('Como funciona?')).toBeVisible();
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Batidas', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Batidas', level: 1 })).toBeVisible();
     await page.getByRole('link', { name: /Pop \/ folk/ }).click();
     await expect(page.getByRole('heading', { name: 'Pop / folk', level: 1 })).toBeVisible();
@@ -434,6 +435,46 @@ test.describe('prática guiada', () => {
     await expect(page.getByRole('region', { name: 'Letra e cifra completa' }).or(page.locator('section').filter({ hasText: 'A tua cifra' })).first()).toContainText('ste da minha cifra');
     await expect(page.getByRole('link', { name: 'Tocar junto (com a letra)' })).toBeVisible();
     expect(external).toEqual([]);
+  });
+});
+
+test.describe('modo guiado e ecrã ligado', () => {
+  test('o plano leva de um passo ao seguinte sem voltar ao início', async ({ page }) => {
+    await onboard(page);
+    await page.getByRole('link', { name: /^Começar: Aquecimento/ }).click();
+    const bar = page.getByRole('complementary', { name: 'Plano de hoje' });
+    await expect(bar).toContainText('passo 1 de');
+    await expect(bar).toContainText('Aquecimento');
+    await bar.getByRole('button', { name: /Feito · seguinte/ }).click();
+    await expect(bar).toContainText('passo 2 de');
+    // Navigating inside the activity keeps the bar.
+    await page.getByRole('link', { name: 'Acordes', exact: true }).click();
+    await expect(bar).toBeVisible();
+    await bar.getByRole('button', { name: 'Sair do modo guiado' }).click();
+    await expect(bar).toHaveCount(0);
+    await page.getByRole('link', { name: 'Início', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: /Marcar «Aquecimento» como feito/ })).toBeChecked();
+    await expect(page.getByRole('link', { name: /^Continuar: / })).toBeVisible();
+  });
+
+  test('botão «Ecrã ligado» fica guardado', async ({ page }) => {
+    await onboard(page);
+    const btn = page.getByRole('button', { name: /Ecrã ligado/ });
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await btn.click();
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
+    await page.reload();
+    await expect(page.getByRole('button', { name: /Ecrã ligado/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('cifra: acordes fixos no topo ao percorrer', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/musicas/evidencias');
+    const strip = page.locator('.chord-strip').first();
+    await expect(strip).toHaveClass(/chord-strip--pinned/);
+    await expect(strip.getByRole('list', { name: 'Acordes desta cifra' })).toContainText('F#m');
+    await strip.getByRole('button', { name: /Fixar os acordes/ }).click();
+    await expect(strip).not.toHaveClass(/chord-strip--pinned/);
   });
 });
 
