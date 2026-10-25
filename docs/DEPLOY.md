@@ -1,6 +1,6 @@
 # Publicação e recuperação
 
-**Nada foi publicado.** Publicar requer a tua autorização.
+Publicação autorizada pelo Guilherme em 2026-10-25: GitHub Pages em `https://guiamorim.github.io/3usic/` (workflow `.github/workflows/deploy.yml`). Outras publicações requerem nova autorização.
 
 ## Executar localmente (sempre possível, sem serviços externos)
 ```bash
@@ -12,8 +12,9 @@ Qualquer servidor de ficheiros estáticos serve `dist/` (a app usa caminhos rela
 O microfone e o service worker exigem HTTPS fora de `localhost`. Opções gratuitas: túnel HTTPS local, ou publicar num alojamento estático. Sem HTTPS, o resto da app funciona mas o afinador fica indisponível (a app explica porquê).
 
 ## Opção A — GitHub Pages (repositório público)
-1. Repositório público no GitHub.
-2. Settings → Pages → Source: GitHub Actions; workflow que corre `npm ci && npm run build` e publica `dist/`.
+1. Repositório público no GitHub (`guiamorim/3usic`).
+2. Settings → Pages → Build and deployment → Source: **GitHub Actions** (passo manual, uma vez).
+3. Cada push para `main` corre lint, tipos, testes, build e E2E e, se tudo passar, publica `dist/`. Os PRs só correm as verificações.
 3. Limites e restrições: ver `docs/COSTS.md` (não destinado a negócio online; sem cabeçalhos HTTP personalizados).
 
 ## Opção B — Cloudflare Pages
