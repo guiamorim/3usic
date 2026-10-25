@@ -177,12 +177,14 @@ test.describe('afinador e microfone', () => {
     await onboard(page);
     await page.goto('/#/afinador');
     await page.getByRole('button', { name: 'Ativar microfone' }).click();
-    await expect(page.getByRole('button', { name: 'Desligar microfone' })).toBeVisible();
+    // The button appears while the mic is still starting: wait until it is actually listening.
+    await expect(page.getByText(/Toca uma corda solta|Nota detetada|Não consigo identificar/)).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
     const live = () => page.evaluate(() => (window as unknown as { __tracks: MediaStreamTrack[] }).__tracks.filter((t) => t.readyState === 'live').length);
-    expect(await live()).toBe(1);
+    await expect.poll(live).toBe(1);
     await page.getByRole('link', { name: 'Início', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
-    expect(await live()).toBe(0);
+    await expect.poll(live).toBe(0);
     await ctx.close();
   });
 });
