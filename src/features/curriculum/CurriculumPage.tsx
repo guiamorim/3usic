@@ -16,7 +16,7 @@ export function CurriculumPage() {
   const { data, completedLessons } = useStore();
   const experience = data.profile?.experience ?? 'none';
   return (
-    <Page title="Aprender" subtitle="Nove módulos, do primeiro contacto com o instrumento à primeira pestana. Todas as lições estão abertas; a ordem recomendada aparece destacada.">
+    <Page title="Aprender" subtitle="Nove módulos, do primeiro contacto com o instrumento à primeira pestana. Todas as lições estão abertas; a ordem recomendada aparece destacada. No dia a dia, basta seguir o plano em «Início», que já inclui a lição certa.">
       <ol className="module-list">
         {MODULES.map((m) => {
           const p = moduleProgress(m.id, completedLessons);

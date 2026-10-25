@@ -51,3 +51,53 @@ export async function strum(midis: readonly number[]): Promise<void> {
   const t = ctx.currentTime + 0.05;
   midis.forEach((m, i) => pluck(ctx, m, t + i * 0.035, 1.8, 0.18));
 }
+
+const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
+
+function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
+  let buf = noiseBuffers.get(ctx);
+  if (!buf) {
+    buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.1), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    noiseBuffers.set(ctx, buf);
+  }
+  return buf;
+}
+
+/** Strummed chord at `when`: down strokes go low → high over all strings, up strokes high → low over the top four. */
+export function strumAt(ctx: AudioContext, midis: readonly number[], when: number, dir: 'down' | 'up', volume = 0.16, duration = 0.9): void {
+  const notes = dir === 'down' ? midis : [...midis].reverse().slice(0, 4);
+  notes.forEach((m, i) => pluck(ctx, m, when + i * 0.012, duration, dir === 'down' ? volume : volume * 0.75));
+}
+
+/** Percussive muted strum («abafado»). */
+export function chuckAt(ctx: AudioContext, when: number, volume = 0.5): void {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1800;
+  filter.Q.value = 0.8;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(volume, when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(when);
+  src.stop(when + 0.08);
+}
+
+/** Metronome-style click. Square wave at 1.2–1.8 kHz: audible on phone speakers. */
+export function clickAt(ctx: AudioContext, when: number, accent: boolean, volume = 0.4): void {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'square';
+  osc.frequency.value = accent ? 1800 : 1200;
+  const v = Math.max(0.0002, volume * (accent ? 1 : 0.7));
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(v, when + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.07);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + 0.08);
+}

@@ -63,6 +63,9 @@ test.describe('percurso principal', () => {
     await page.getByRole('button', { name: 'Seguinte' }).click();
     await answerAll(page);
     await expect(page.getByRole('heading', { name: /^Resultado: \d+ de 8/ })).toBeVisible();
+    // The lesson is done: the summary leads straight to the next lesson.
+    await expect(page.getByRole('link', { name: 'Voltar à lição' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Próxima lição: / })).toBeVisible();
 
     // Progress reflects it.
     await page.goto('/#/progresso');
@@ -178,7 +181,7 @@ test.describe('afinador e microfone', () => {
     await page.goto('/#/afinador');
     await page.getByRole('button', { name: 'Ativar microfone' }).click();
     // The button appears while the mic is still starting: wait until it is actually listening.
-    await expect(page.getByText(/Toca uma corda solta|Nota detetada|Não consigo identificar/)).toBeVisible();
+    await expect(page.getByText(/Toca uma corda solta|cents|Não consigo identificar|longe de qualquer corda/).first()).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
     const live = () => page.evaluate(() => (window as unknown as { __tracks: MediaStreamTrack[] }).__tracks.filter((t) => t.readyState === 'live').length);
     await expect.poll(live).toBe(1);
@@ -340,6 +343,97 @@ test.describe('músicas', () => {
     await page.getByRole('button', { name: 'Guardar música' }).click();
     await expect(page.getByRole('heading', { name: 'Ficheiro CP', level: 1 })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Refrão' })).toBeVisible();
+  });
+});
+
+test.describe('prática guiada', () => {
+  test('exercício aberto a partir de uma lição deixa seguir para a próxima', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/aprender/l1-1');
+    await page.getByRole('link', { name: /Exercício: Nomes das cordas/ }).click();
+    await answerAll(page);
+    const next = page.getByRole('button', { name: /^Concluir «.*» e passar à próxima/ }).or(page.getByRole('link', { name: /^Avançar mesmo assim: / }));
+    await next.click();
+    await expect(page).toHaveURL(/#\/aprender\/(?!l1-1$)/);
+    await expect(page.getByRole('heading', { name: 'Objetivo' })).toBeVisible();
+  });
+
+  test('separador Batidas: abre um padrão, toca e mostra o cursor', async ({ page }) => {
+    await onboard(page);
+    await expect(page.getByText('Por onde começar?')).toBeVisible();
+    await page.getByRole('link', { name: 'Batidas', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Batidas', level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: /Pop \/ folk/ }).click();
+    await expect(page.getByRole('heading', { name: 'Pop / folk', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Tocar' }).click();
+    await expect(page.locator('.strum__now')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Parar' }).click();
+    await expect(page.locator('.strum__now')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Tempo Perdido/ })).toBeVisible();
+  });
+
+  test('tocar junto sem microfone: contagem, acorde atual e fim', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/musicas/tempo-perdido');
+    await page.getByRole('link', { name: /^Tocar junto/ }).click();
+    await expect(page.getByRole('heading', { name: 'Tocar junto: Tempo Perdido' })).toBeVisible();
+    await page.getByLabel('Avaliar com o microfone').click();
+    await expect(page.getByLabel('Avaliar com o microfone')).not.toBeChecked();
+    await page.getByLabel('Repetir a progressão').selectOption('1');
+    await page.getByRole('button', { name: 'Começar' }).click();
+    await expect(page.getByText(/Prepara-te/)).toBeVisible();
+    await expect(page.getByText(/^Acorde 1 de \d+/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.play-along__chord')).toHaveText('C');
+    await page.getByRole('button', { name: 'Parar' }).click();
+    await expect(page.getByRole('heading', { name: 'Chegaste ao fim' })).toBeVisible();
+  });
+
+  test('tocar junto com microfone: escuta e liberta o microfone', async ({ browser, browserName }) => {
+    test.skip(browserName !== 'chromium');
+    const ctx = await browser.newContext({ permissions: ['microphone'] });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      const w = window as unknown as { __tracks: MediaStreamTrack[] };
+      w.__tracks = [];
+      const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia = async (c) => {
+        const s = await orig(c);
+        w.__tracks.push(...s.getTracks());
+        return s;
+      };
+    });
+    await onboard(page);
+    await page.goto('/#/musicas/tempo-perdido/tocar');
+    await page.getByRole('button', { name: 'Começar' }).click();
+    await expect(page.getByText('Som captado')).toBeVisible();
+    const live = () => page.evaluate(() => (window as unknown as { __tracks: MediaStreamTrack[] }).__tracks.filter((t) => t.readyState === 'live').length);
+    await expect.poll(live).toBe(1);
+    await page.getByRole('button', { name: 'Parar' }).click();
+    await expect.poll(live).toBe(0);
+    await expect(page.getByRole('heading', { name: /Pontuação|Sem resultado/ })).toBeVisible();
+    await ctx.close();
+  });
+
+  test('letra: cola a tua cifra numa música do catálogo', async ({ page }) => {
+    const external: string[] = [];
+    page.on('request', (r) => {
+      if (!r.url().startsWith('http://localhost:4173')) external.push(r.url());
+    });
+    await onboard(page);
+    await page.goto('/#/musicas/tempo-perdido');
+    await expect(page.getByRole('heading', { name: 'Letra e cifra completa' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Procurar no Cifra Club/ })).toHaveAttribute('href', /duckduckgo\.com.*cifraclub/);
+    await page.getByRole('link', { name: 'Colar a cifra com letra' }).click();
+    await expect(page.getByRole('heading', { name: 'Colar cifra: Tempo Perdido' })).toBeVisible();
+    await page.getByLabel('Ou cola aqui a cifra').fill(['C          G', 'Linha de teste da minha cifra', 'Am         Em', 'Segunda linha'].join('\n'));
+    await page.getByRole('button', { name: 'Pré-visualizar' }).click();
+    await expect(page.getByLabel('Título')).toHaveValue('Tempo Perdido');
+    await page.getByRole('button', { name: 'Guardar música' }).click();
+    await expect(page.getByRole('heading', { name: 'Tempo Perdido', level: 1 })).toBeVisible();
+    await expect(page.getByText('A tua cifra, guardada só neste dispositivo.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Letra e cifra completa' }).or(page.locator('section').filter({ hasText: 'A tua cifra' })).first()).toContainText('ste da minha cifra');
+    await expect(page.getByRole('link', { name: 'Tocar junto (com a letra)' })).toBeVisible();
+    expect(external).toEqual([]);
   });
 });
 

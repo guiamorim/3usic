@@ -64,7 +64,7 @@ export const PracticeEntrySchema = z
     id: z.string().min(1).max(80),
     day: DaySchema,
     seconds: z.number().int().min(0).max(24 * 3600),
-    source: z.enum(['lesson', 'exercise', 'metronome', 'tuner', 'plan', 'chord-changes', 'song']),
+    source: z.enum(['lesson', 'exercise', 'metronome', 'tuner', 'plan', 'chord-changes', 'song', 'strum']),
     label: z.string().max(120),
   })
   .strict();
@@ -112,6 +112,8 @@ export const UserSongSchema = z
     genre: GenreSchema,
     year: z.number().int().min(1000).max(2100).nullable(),
     chordpro: z.string().min(1).max(MAX_SONG_TEXT),
+    /** Catalogue song this sheet belongs to (the user's own cifra with lyrics). */
+    catalogId: z.string().min(1).max(80).optional(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

@@ -7,6 +7,7 @@ import { localDay } from '../../domain/dates';
 import { QuizRunner, type QuizItem, type SkillResult } from './QuizRunner';
 import { ChordChangesPage } from './ChordChangesPage';
 import { exerciseBySkill } from '../../domain/exercises';
+import { LessonContinue } from '../curriculum/LessonContinue';
 
 function Summary({ results, onRetry }: { results: SkillResult[]; onRetry(): void }) {
   const { data } = useStore();
@@ -40,7 +41,8 @@ function Summary({ results, onRetry }: { results: SkillResult[]; onRetry(): void
         <button type="button" className="btn btn--secondary" onClick={onRetry}>
           Repetir
         </button>
-        <a className="btn btn--primary" href="#/praticar">
+        <LessonContinue passed={score >= PASS_SCORE} />
+        <a className="btn btn--ghost" href="#/praticar">
           Voltar aos exercícios
         </a>
       </div>

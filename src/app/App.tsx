@@ -18,6 +18,8 @@ import { DataPage } from '../features/settings/DataPage';
 import { SongsPage } from '../features/songs/SongsPage';
 import { SongDetailPage } from '../features/songs/SongDetailPage';
 import { SongImportPage } from '../features/songs/SongImportPage';
+import { PlayAlongPage } from '../features/songs/PlayAlongPage';
+import { StrumsPage } from '../features/strums/StrumsPage';
 import { Page } from '../components/Page';
 
 // The tuner pulls in the pitch detector; load it on demand.
@@ -44,7 +46,10 @@ function route(segments: string[]): ReactNode {
       return id ? <ExercisePage key={`${id}/${arg ?? ''}`} exerciseId={id} arg={arg} /> : <PracticePage />;
     case 'musicas':
       if (id === 'importar') return <SongImportPage />;
+      if (id && arg === 'tocar') return <PlayAlongPage key={`${id}/tocar`} songId={id} />;
       return id ? <SongDetailPage key={id} songId={id} /> : <SongsPage />;
+    case 'batidas':
+      return <StrumsPage key={id ?? ''} patternId={id} />;
     case 'acordes':
       return id ? <ChordDetailPage key={id} chordId={id} /> : <ChordsPage />;
     case 'afinador':

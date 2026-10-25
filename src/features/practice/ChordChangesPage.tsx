@@ -3,6 +3,7 @@ import { useStore } from '../../app/store';
 import { Page } from '../../components/Page';
 import { ChordDiagram } from '../../components/ChordDiagram';
 import { chordById } from '../../content/chords';
+import { LessonContinue } from '../curriculum/LessonContinue';
 
 const PAIRS = ['A-D', 'D-G', 'G-C', 'C-Am', 'Am-E', 'Em-G', 'D-Em', 'C-Fmaj7', 'C-F-simples', 'E-A'] as const;
 const DURATION = 60;
@@ -120,7 +121,14 @@ export function ChordChangesPage({ initialPair }: { initialPair?: string }) {
           </button>
         </div>
       )}
-      {phase === 'saved' && <p role="status">Resultado guardado. Repete amanhã: o número sobe com prática espaçada.</p>}
+      {phase === 'saved' && (
+        <>
+          <p role="status">Resultado guardado. Repete amanhã: o número sobe com prática espaçada.</p>
+          <div className="button-row">
+            <LessonContinue passed />
+          </div>
+        </>
+      )}
 
       <section className="card">
         <h2>Histórico deste par</h2>

@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { IconBook, IconGrid, IconHome, IconMusic, IconTarget, IconTools } from '../components/Icons';
+import { IconBook, IconGrid, IconHome, IconMusic, IconStrum, IconTarget, IconTools } from '../components/Icons';
 
 const NAV = [
   { href: '#/', match: '', label: 'Início', Icon: IconHome },
   { href: '#/aprender', match: 'aprender', label: 'Aprender', Icon: IconBook },
   { href: '#/praticar', match: 'praticar', label: 'Praticar', Icon: IconTarget },
   { href: '#/musicas', match: 'musicas', label: 'Músicas', Icon: IconMusic },
+  { href: '#/batidas', match: 'batidas', label: 'Batidas', Icon: IconStrum },
   { href: '#/acordes', match: 'acordes', label: 'Acordes', Icon: IconGrid },
   { href: '#/ferramentas', match: 'ferramentas', label: 'Mais', Icon: IconTools },
 ] as const;

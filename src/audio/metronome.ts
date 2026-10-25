@@ -77,13 +77,16 @@ export class Metronome {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     const secondary = this.config.signature.label === '6/8' && beatInBar === 3 && this.config.accent;
-    osc.frequency.value = accent ? 1600 : secondary ? 1200 : 1000;
-    const vol = Math.max(0.0002, this.config.volume * (accent ? 1 : 0.6));
-    gain.gain.setValueAtTime(vol, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    // Square wave in the 1–2 kHz range: phone speakers reproduce it well and it cuts through a guitar.
+    osc.type = 'square';
+    osc.frequency.value = accent ? 1800 : secondary ? 1400 : 1200;
+    const vol = Math.max(0.0002, 0.5 * this.config.volume * (accent ? 1 : 0.7));
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(vol, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
     osc.connect(gain).connect(ctx.destination);
     osc.start(time);
-    osc.stop(time + 0.06);
+    osc.stop(time + 0.08);
   }
 
   stop(): void {

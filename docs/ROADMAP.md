@@ -12,9 +12,13 @@ Ver README → Funcionalidades.
 
 ## Implementado depois do MVP
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
+- Tocar junto com reconhecimento de acordes, separador Batidas, atalho para letra + colar cifra na música, afinador com Hz/histórico/modo cromático, correções de áudio no iPhone (2026-10-25).
 - Rock clássico BR/PT/US/UK, filtro por país, versões simplificada e mais próxima do original, power chords móveis (2026-10-25).
 
 ## Planeado (não implementado)
+- Validar o reconhecimento de acordes e o afinador em iPhone/Android reais e ajustar limiares (`VOICED_RMS`, `MIN_SIMILARITY`).
+- Verificar o ritmo da batida pelo microfone (deteção de ataques), com calibração de latência.
+- Batidas de bossa nova e samba, validadas por quem as toque.
 - Conferir os acordes das músicas internacionais mais antigas do catálogo (escritas de memória) e de «Garota de Ipanema».
 - Mais músicas brasileiras e portuguesas, com acordes confirmados por alguém que as toque.
 - Editar uma cifra importada dentro da app.

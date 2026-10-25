@@ -31,6 +31,13 @@ PWA                                 ── vite-plugin-pwa (Workbox generateSW, 
 
 A versão 2 acrescenta o store `songs` (migração `oldVersion < 2` em `db.ts`) e os campos opcionais `targetSongId` e `knownChords` nas preferências. Ficheiros exportados v1 são migrados ao importar (`songs: []`).
 
+## Prática com microfone e batidas
+- `src/domain/chordDetect.ts`: FFT, cromagrama (130–1100 Hz, fora dos cliques do metrónomo) e `judgeChord`, que compara o acorde esperado com as 24 tríades maiores/menores (modelos com harmónicos). Verifica «é este o acorde?», não transcreve livremente.
+- `src/domain/playAlong.ts`: linha do tempo em tempos (compassos do catálogo ou tempos por acorde nas cifras importadas), repetição, veredito por acorde (≥ 35 % dos frames com som reconhecidos) e pontuação.
+- `src/domain/strumming.ts` + `src/content/strums.ts`: padrões de batida e agendamento de subdivisões (`collectSlots`). `src/audio/slotClock.ts` agenda sons no relógio de áudio.
+- `src/audio/context.ts`: no iOS, `navigator.audioSession` passa a «playback» para o som tocar com o interruptor de silêncio ligado, e a «play-and-record» enquanto o microfone está aberto. Sem essa API, toca-se `silence.wav` no gesto do utilizador.
+- `src/audio/micInput.ts`: microfone para o «Tocar junto»; o contexto de áudio é criado no clique (antes de qualquer `await`), como o iOS exige.
+
 ## Músicas
 - `src/domain/chordSymbols.ts`: lê símbolos de acordes (lista de sufixos permitidos, para não confundir palavras da letra com acordes), simplifica para as qualidades da biblioteca e transpõe.
 - `src/domain/chordpro.ts`: parser ChordPro e de texto simples (deteta linhas só com acordes e junta-as à letra por coluna), deteção automática de formato, limites (200 000 caracteres, 3000 linhas, 400 por linha), remoção de caracteres de controlo e serialização para ChordPro. Nada é avaliado nem inserido como HTML: o ecrã usa só nós de texto React.

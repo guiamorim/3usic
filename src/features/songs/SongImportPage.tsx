@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react';
 import { useStore } from '../../app/store';
-import { navigate } from '../../app/router';
+import { hashQuery, navigate } from '../../app/router';
+import { CATALOG } from '../../content/songs';
 import { Page } from '../../components/Page';
 import { GENRE_LABEL } from '../../content/labels';
 import { MAX_SONG_CHARS, parseSongText, songChords, toChordPro, type ParsedSong, type SongFormat } from '../../domain/chordpro';
@@ -40,6 +41,8 @@ interface Draft {
 
 export function SongImportPage() {
   const { data, saveSong } = useStore();
+  // «Colar a minha cifra» from a catalogue song: the import is linked to it.
+  const [forSong] = useState(() => CATALOG.find((c) => c.id === hashQuery().get('para')) ?? null);
   const [text, setText] = useState('');
   const [format, setFormat] = useState<SongFormat | 'auto'>('auto');
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +79,10 @@ export function SongImportPage() {
     setDraft({
       song: r.song,
       format: r.format,
-      title: r.song.meta.title,
-      artist: r.song.meta.artist,
-      genre: GenreSchema.safeParse(fallbackGenre).success ? fallbackGenre : 'outro',
-      year: r.song.meta.year ? String(r.song.meta.year) : '',
+      title: forSong?.title ?? r.song.meta.title,
+      artist: forSong?.artist ?? r.song.meta.artist,
+      genre: forSong?.genre ?? (GenreSchema.safeParse(fallbackGenre).success ? fallbackGenre : 'outro'),
+      year: forSong ? String(forSong.year) : r.song.meta.year ? String(r.song.meta.year) : '',
     });
   }
 
@@ -102,16 +105,25 @@ export function SongImportPage() {
       return;
     }
     setSaving(true);
-    const id = await saveSong({ title, artist, genre: draft.genre, year: yearNum, chordpro });
+    const id = await saveSong({ title, artist, genre: draft.genre, year: yearNum, chordpro, ...(forSong ? { catalogId: forSong.id } : {}) });
     setSaving(false);
-    if (id) navigate(`#/musicas/${encodeURIComponent(id)}`);
+    if (id) navigate(`#/musicas/${encodeURIComponent(forSong ? forSong.id : id)}`);
     else setError('Não foi possível guardar a música.');
   }
 
   const chords = draft ? songChords(draft.song) : [];
 
   return (
-    <Page title="Importar cifra" back={{ href: '#/musicas', label: 'Músicas' }} subtitle="Cola o texto de uma cifra ou escolhe um ficheiro. A app reorganiza-a e cria um plano para a aprenderes.">
+    <Page
+      title={forSong ? `Colar cifra: ${forSong.title}` : 'Importar cifra'}
+      back={forSong ? { href: `#/musicas/${encodeURIComponent(forSong.id)}`, label: forSong.title } : { href: '#/musicas', label: 'Músicas' }}
+      subtitle="Cola o texto de uma cifra ou escolhe um ficheiro. A app reorganiza-a e cria um plano para a aprenderes."
+    >
+      {forSong && (
+        <p className="notice notice--tip">
+          Copia a cifra com letra de um site de cifras (seleciona o texto, copia e cola aqui). Fica associada a «{forSong.title}» e aparece na página da música e no modo Tocar junto.
+        </p>
+      )}
       <p className="notice notice--info">
         A cifra fica guardada só neste dispositivo e nunca é enviada para nenhum servidor. Importa apenas para uso pessoal: letras e cifras de músicas conhecidas têm normalmente direitos de autor.
       </p>

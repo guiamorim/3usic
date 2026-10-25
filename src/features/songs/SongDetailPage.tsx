@@ -11,6 +11,7 @@ import { findSong, VERSION_LABEL, versionOf, type SongVersion } from '../../doma
 import { ORIGIN_LABEL } from '../../content/songs';
 import { buildSongPlan, chordLabel, knownChordIds, suggestCapo, type SongStep } from '../../domain/songPlan';
 import { SongSheet } from './SongSheet';
+import { parseChordPro } from '../../domain/chordpro';
 import { DIFFICULTY_LABEL } from './SongsPage';
 
 const FLAT_KEYS = new Set(['F', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm']);
@@ -35,6 +36,13 @@ export function SongDetailPage({ songId }: { songId: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const known = useMemo(() => knownChordIds(completedLessons, settings.knownChords), [completedLessons, settings.knownChords]);
   const fromLessons = useMemo(() => knownChordIds(completedLessons), [completedLessons]);
+  // The user's own cifra (with lyrics) pasted for this catalogue song, if any.
+  const linked = useMemo(() => data.songs.filter((s) => s.catalogId === songId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0], [data.songs, songId]);
+  const linkedSheet = useMemo(() => {
+    if (!linked) return null;
+    const r = parseChordPro(linked.chordpro);
+    return r.ok ? r.song : null;
+  }, [linked]);
 
   if (!song) {
     return (
@@ -184,6 +192,9 @@ export function SongDetailPage({ songId }: { songId: string }) {
         <button type="button" className={isTarget ? 'btn btn--secondary' : 'btn btn--primary'} onClick={() => void toggleTarget()} aria-pressed={isTarget}>
           {isTarget ? 'É a tua música objetivo ✓' : 'Quero aprender esta'}
         </button>
+        <a className="btn btn--primary" href={`${href('musicas', linked?.id ?? song.id)}/tocar`}>
+          Tocar junto{linked ? ' (com a letra)' : ''}
+        </a>
       </div>
       {message && (
         <p className="notice notice--success" role="status">
@@ -279,6 +290,41 @@ export function SongDetailPage({ songId }: { songId: string }) {
           ))}
         </ul>
       </section>
+
+      {song.source === 'catalog' && !song.fullSheet && (
+        <section className="card" aria-labelledby="letra">
+          <h2 id="letra">Letra e cifra completa</h2>
+          {linkedSheet && linked ? (
+            <>
+              <p className="muted">A tua cifra, guardada só neste dispositivo.</p>
+              <SongSheet song={linkedSheet} />
+              <div className="button-row">
+                <a className="btn btn--secondary" href={href('musicas', linked.id)}>
+                  Abrir a minha cifra (transpor, apagar)
+                </a>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>
+                A letra desta música tem direitos de autor, por isso a app não a pode incluir. Os sites de cifras pagam licenças para a mostrar. Podes abri-la lá e colar aqui a cifra com letra: fica só no teu dispositivo, para uso pessoal.
+              </p>
+              <div className="button-row">
+                <a className="btn btn--secondary" href={`https://duckduckgo.com/?q=${encodeURIComponent(`${song.title} ${song.artist} site:cifraclub.com.br`)}`} target="_blank" rel="noopener noreferrer">
+                  Procurar no Cifra Club ↗
+                </a>
+                <a className="btn btn--secondary" href={`https://duckduckgo.com/?q=${encodeURIComponent(`${song.title} ${song.artist} cifra letra`)}`} target="_blank" rel="noopener noreferrer">
+                  Procurar noutros sites ↗
+                </a>
+                <a className="btn btn--primary" href={`#/musicas/importar?para=${encodeURIComponent(song.id)}`}>
+                  Colar a cifra com letra
+                </a>
+              </div>
+              <p className="hint">Os botões ↗ abrem um site externo no navegador (a pesquisa envia o título e o artista para esse site). A app em si não faz pedidos a terceiros.</p>
+            </>
+          )}
+        </section>
+      )}
 
       <section className="card" aria-labelledby="cifra">
         <h2 id="cifra">{song.fullSheet ? 'Cifra' : 'Progressão'}</h2>

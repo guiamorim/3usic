@@ -11,6 +11,11 @@ export interface PitchOptions {
   sampleRate: number;
   /** Absolute threshold on the cumulative mean normalised difference (lower = stricter). */
   threshold?: number;
+  /**
+   * When nothing dips below `threshold` (decaying string, phone mic noise), accept the best dip
+   * if it is below this value. Set equal to `threshold` to disable.
+   */
+  fallbackThreshold?: number;
   minFrequency?: number;
   maxFrequency?: number;
 }
@@ -25,7 +30,7 @@ export function rms(buffer: Float32Array): number {
 }
 
 export function detectPitch(buffer: Float32Array, opts: PitchOptions): PitchResult | null {
-  const { sampleRate, threshold = 0.15, minFrequency = 60, maxFrequency = 1200 } = opts;
+  const { sampleRate, threshold = 0.15, fallbackThreshold = 0.35, minFrequency = 60, maxFrequency = 1200 } = opts;
   const half = Math.floor(buffer.length / 2);
   const tauMin = Math.max(2, Math.floor(sampleRate / maxFrequency));
   const tauMax = Math.min(half - 1, Math.ceil(sampleRate / minFrequency));
@@ -60,6 +65,22 @@ export function detectPitch(buffer: Float32Array, opts: PitchOptions): PitchResu
       break;
     }
   }
+  if (tauEstimate < 0 && fallbackThreshold > threshold) {
+    // Global minimum, then the earliest local minimum nearly as deep (avoids picking 2T, 3T: octave-down errors).
+    let best = tauMin;
+    for (let tau = tauMin + 1; tau <= tauMax; tau++) if ((cmnd[tau] ?? 1) < (cmnd[best] ?? 1)) best = tau;
+    const bestValue = cmnd[best] ?? 1;
+    if (bestValue < fallbackThreshold) {
+      tauEstimate = best;
+      for (let tau = tauMin + 1; tau < best; tau++) {
+        const v = cmnd[tau] ?? 1;
+        if (v <= (cmnd[tau - 1] ?? 1) && v <= (cmnd[tau + 1] ?? 1) && v < bestValue + 0.05) {
+          tauEstimate = tau;
+          break;
+        }
+      }
+    }
+  }
   if (tauEstimate < 0) return null;
 
   // Step 5: parabolic interpolation for sub-sample precision.
@@ -91,6 +112,35 @@ export class PitchSmoother {
 
   reset(): void {
     this.values.length = 0;
+  }
+}
+
+/**
+ * Median (rejects outliers) followed by an exponential moving average in the log-frequency domain,
+ * so the needle glides instead of jumping. A change bigger than `jumpCents` (a new note) resets it.
+ */
+export class PitchFollower {
+  private readonly median: PitchSmoother;
+  private value: number | null = null;
+
+  constructor(
+    size = 5,
+    private readonly alpha = 0.3,
+    private readonly jumpCents = 60,
+  ) {
+    this.median = new PitchSmoother(size);
+  }
+
+  push(freq: number): number {
+    const m = this.median.push(freq);
+    if (this.value === null || Math.abs(1200 * Math.log2(m / this.value)) > this.jumpCents) this.value = m;
+    else this.value = this.value * Math.pow(m / this.value, this.alpha);
+    return this.value;
+  }
+
+  reset(): void {
+    this.median.reset();
+    this.value = null;
   }
 }
 

@@ -62,6 +62,22 @@ export function DashboardPage() {
         </a>
       </div>
 
+      <details className="card start-guide" open={completedLessons.size < 3}>
+        <summary>
+          <strong>Por onde começar?</strong>
+        </summary>
+        <ol>
+          <li>
+            <strong>Começa sempre aqui, em «Início».</strong> O plano de hoje já escolhe tudo por ti, pela ordem certa.
+          </li>
+          <li>Em cada passo carrega em «Abrir»: o passo «Conteúdo novo» abre a lição do dia; os outros abrem o afinador, exercícios ou a tua música.</li>
+          <li>Quando acabares um passo, volta aqui e marca o visto. No fim de cada exercício também há um botão para seguir para a próxima lição.</li>
+        </ol>
+        <p className="hint">
+          O separador «Aprender» é o mapa completo do curso: serve para rever uma lição ou adiantar matéria, não é obrigatório passar por lá todos os dias.
+        </p>
+      </details>
+
       <section className="card" aria-labelledby="plan-title">
         <div className="card__head">
           <h2 id="plan-title">Plano de hoje</h2>

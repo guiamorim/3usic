@@ -38,3 +38,9 @@ export const IconMusic = () => (
     <circle cx="17" cy="16" r="3" />
   </svg>
 );
+export const IconStrum = () => (
+  <svg {...common}>
+    <path d="M7 4v12M4 13l3 3 3-3" />
+    <path d="M17 20V8M14 11l3-3 3 3" />
+  </svg>
+);

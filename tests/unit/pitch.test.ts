@@ -75,3 +75,26 @@ describe('estabilização e estado de afinação', () => {
     expect(tuningState(8)).toBe('sharp');
   });
 });
+
+describe('afinador mais tolerante', () => {
+  it('com ruído forte ainda encontra a nota (limiar de recurso)', async () => {
+    const { detectPitch: dp } = await import('../../src/audio/pitch');
+    const buf = tone(110, { harmonics: [1, 0.6, 0.4], noise: 0.6, seed: 9 });
+    const strict = dp(buf, { sampleRate: SR, fallbackThreshold: 0.15 });
+    const tolerant = dp(buf, { sampleRate: SR });
+    expect(tolerant).not.toBeNull();
+    expect(frequencyToNote(tolerant!.frequency).pitchClass).toBe('A');
+    // The fallback only adds readings, it never changes a strict one.
+    if (strict) expect(strict.frequency).toBeCloseTo(tolerant!.frequency, 1);
+  });
+
+  it('o seguidor suaviza pequenas variações e salta para uma nota nova', async () => {
+    const { PitchFollower } = await import('../../src/audio/pitch');
+    const f = new PitchFollower(1, 0.3, 60);
+    expect(f.push(110)).toBe(110);
+    const v = f.push(111);
+    expect(v).toBeGreaterThan(110);
+    expect(v).toBeLessThan(111);
+    expect(f.push(147)).toBe(147);
+  });
+});

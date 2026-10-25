@@ -64,7 +64,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,wav}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         // No runtime caching of third-party origins: the app makes no external requests.

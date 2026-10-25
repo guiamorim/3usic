@@ -23,17 +23,66 @@ const STATE_TEXT: Record<TuningState, string> = {
   sharp: 'Alto — alivia a corda (desce a afinação)',
 };
 
+const HISTORY = 90;
+
+type Mode = 'string' | 'chromatic';
+
+/** Last ~3 s of deviation in cents, drawn as a line so the player sees the pitch move. */
+function PitchHistory({ points }: { points: readonly (number | null)[] }) {
+  const w = 300;
+  const h = 60;
+  const y = (c: number) => h / 2 - (Math.max(-50, Math.min(50, c)) / 50) * (h / 2 - 2);
+  const paths: string[] = [];
+  let current = '';
+  points.forEach((c, i) => {
+    const x = (i / (HISTORY - 1)) * w;
+    if (c === null) {
+      if (current) paths.push(current);
+      current = '';
+      return;
+    }
+    current += `${current ? 'L' : 'M'}${x.toFixed(1)},${y(c).toFixed(1)}`;
+  });
+  if (current) paths.push(current);
+  return (
+    <svg className="pitch-history" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <rect className="pitch-history__zone" x="0" y={y(5)} width={w} height={y(-5) - y(5)} />
+      <line className="pitch-history__mid" x1="0" x2={w} y1={h / 2} y2={h / 2} />
+      {paths.map((d, i) => (
+        <path key={i} className="pitch-history__line" d={d} />
+      ))}
+    </svg>
+  );
+}
+
+const fmtHz = (f: number) => f.toFixed(1).replace('.', ',');
+
 export function TunerPage() {
   const { data } = useStore();
   const a4 = data.profile?.a4 ?? 440;
+  const [mode, setMode] = useState<Mode>('string');
   const [status, setStatus] = useState<TunerStatus>({ state: 'idle' });
+  const [history, setHistory] = useState<(number | null)[]>(() => Array<number | null>(HISTORY).fill(null));
   const [announcement, setAnnouncement] = useState('');
   const tunerRef = useRef<Tuner | null>(null);
   const lastAnnounced = useRef('');
   const support = tunerSupport();
 
+  const modeRef = useRef(mode);
+  function changeMode(m: Mode) {
+    modeRef.current = m;
+    setMode(m);
+    setHistory(Array<number | null>(HISTORY).fill(null));
+  }
+
   useEffect(() => {
-    const tuner = new Tuner(setStatus, a4);
+    const tuner = new Tuner((s) => {
+      setStatus(s);
+      if (s.state !== 'listening') return;
+      const r = s.reading && !s.held ? s.reading : null;
+      const c = r ? (modeRef.current === 'string' ? r.string.cents : r.note.cents) : null;
+      setHistory((h) => [...h.slice(1), c]);
+    }, a4);
     tunerRef.current = tuner;
     const onHide = () => {
       if (document.hidden && tuner.active) tuner.stop();
@@ -46,17 +95,21 @@ export function TunerPage() {
   }, [a4]);
 
   const reading = status.state === 'listening' ? status.reading : null;
-  const tState = reading ? tuningState(reading.string.cents) : null;
-  const cents = reading ? Math.max(-50, Math.min(50, reading.string.cents)) : 0;
+  const held = status.state === 'listening' && status.held;
+  const rawCents = reading ? (mode === 'string' ? reading.string.cents : reading.note.cents) : 0;
+  const tState = reading ? tuningState(rawCents) : null;
+  const cents = Math.max(-50, Math.min(50, rawCents));
+  const level = status.state === 'listening' ? status.level : 0;
+  const target = reading ? (mode === 'string' ? reading.string.frequency : reading.note.targetFrequency) : null;
 
   // Throttled screen-reader announcement: only when string or state changes.
   useEffect(() => {
     if (!reading || !tState) return;
-    const key = `${reading.string.string.number}-${tState}`;
+    const key = mode === 'string' ? `${reading.string.string.number}-${tState}` : `${reading.note.pitchClass}${reading.note.octave}-${tState}`;
     if (key === lastAnnounced.current) return;
     lastAnnounced.current = key;
-    setAnnouncement(`${reading.string.string.number}.ª corda: ${STATE_TEXT[tState]}`);
-  }, [reading, tState]);
+    setAnnouncement(mode === 'string' ? `${reading.string.string.number}.ª corda: ${STATE_TEXT[tState]}` : `${reading.note.pitchClass}: ${STATE_TEXT[tState]}`);
+  }, [reading, tState, mode]);
 
   const listening = status.state === 'listening' || status.state === 'starting';
 
@@ -79,11 +132,37 @@ export function TunerPage() {
           </>
         ) : (
           <>
-            <div className={`tuner__display tuner__display--${tState ?? 'none'}`}>
+            <fieldset className="version-switch">
+              <legend>Modo</legend>
+              <div className="choice-group choice-group--inline">
+                {(
+                  [
+                    ['string', 'Cordas (afinação padrão)'],
+                    ['chromatic', 'Cromático (qualquer nota)'],
+                  ] as const
+                ).map(([m, label]) => (
+                  <label key={m} className="chip">
+                    <input type="radio" name="modo-afinador" checked={mode === m} onChange={() => changeMode(m)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className={`tuner__display tuner__display--${tState ?? 'none'}${held ? ' tuner__display--held' : ''}`}>
               <p className="tuner__note" aria-hidden="true">
-                {reading ? reading.string.string.pitchClass : '–'}
+                {reading ? (mode === 'string' ? reading.string.string.pitchClass : reading.note.pitchClass.replace('#', '♯')) : '–'}
               </p>
-              <p className="tuner__string">{reading ? `${reading.string.string.number}.ª corda · ${reading.string.string.label}` : 'À escuta…'}</p>
+              <p className="tuner__string">
+                {reading
+                  ? mode === 'string'
+                    ? `${reading.string.string.number}.ª corda · ${reading.string.string.label}`
+                    : `${reading.note.pitchClass.replace('#', '♯')}${reading.note.octave} · ${SOLFEGE[reading.note.pitchClass]}`
+                  : 'À escuta…'}
+              </p>
+              <p className="tuner__freq">
+                <span>{reading ? `${fmtHz(reading.frequency)} Hz` : '— Hz'}</span>
+                {target !== null && <span className="muted"> · alvo {fmtHz(target)} Hz</span>}
+              </p>
               <div className="meter" aria-hidden="true">
                 <div className="meter__zone" />
                 <div className="meter__needle" style={{ left: `${50 + cents}%` }} />
@@ -94,18 +173,23 @@ export function TunerPage() {
               <p className="tuner__state">
                 {status.state === 'starting'
                   ? 'A iniciar o microfone…'
-                  : reading && tState
-                    ? `${STATE_TEXT[tState]} (${reading.string.cents > 0 ? '+' : ''}${Math.round(reading.string.cents)} cents)`
-                    : status.state === 'listening' && status.hint === 'noisy'
-                      ? 'Não consigo identificar uma nota. Há ruído ou várias cordas a soar: toca uma corda de cada vez, perto do microfone, e abafa as outras.'
-                      : 'Toca uma corda solta e deixa-a soar.'}
+                  : reading && mode === 'string' && Math.abs(rawCents) > 100
+                    ? `Ouço ${reading.note.pitchClass.replace('#', '♯')}${reading.note.octave}, longe de qualquer corda solta. Se a corda está muito desafinada, usa o modo cromático.`
+                    : reading && tState
+                      ? `${STATE_TEXT[tState]} (${rawCents > 0 ? '+' : ''}${Math.round(rawCents)} cents)`
+                    : status.state === 'listening' && status.hint === 'no-input'
+                      ? 'O microfone está ligado mas não chega som. Desliga e volta a ligar o microfone; se continuar, fecha outras apps que usem o microfone (chamadas, gravador) e recarrega a página.'
+                      : status.state === 'listening' && status.hint === 'noisy'
+                        ? 'Não consigo identificar uma nota. Há ruído ou várias cordas a soar: toca uma corda de cada vez, perto do microfone, e abafa as outras.'
+                        : 'Toca uma corda solta e deixa-a soar.'}
               </p>
-              {reading && (
-                <p className="muted">
-                  Nota detetada: {reading.note.pitchClass.replace('#', '♯')}
-                  {reading.note.octave} ({SOLFEGE[reading.note.pitchClass]}) · {reading.frequency.toFixed(1).replace('.', ',')} Hz
-                </p>
-              )}
+              <PitchHistory points={history} />
+              <div className="level" aria-hidden="true">
+                <span>Som captado</span>
+                <div className="level__bar">
+                  <div className="level__fill" style={{ width: `${Math.round(level * 100)}%` }} />
+                </div>
+              </div>
             </div>
             <p className="visually-hidden" aria-live="polite">
               {announcement}
@@ -139,7 +223,8 @@ export function TunerPage() {
         <ul>
           <li>Funciona melhor com uma corda de cada vez, em ambiente silencioso e perto do microfone.</li>
           <li>Microfones de telemóvel e portáteis variam muito; o rigor esperado é de alguns cents, não o de um afinador profissional.</li>
-          <li>Afinações alternativas (Drop D, meio-tom abaixo) ainda não são suportadas.</li>
+          <li>Para afinações alternativas (Drop D, meio-tom abaixo) usa o modo cromático e afina cada corda para a nota pretendida.</li>
+          <li>No iPhone, se o som não for captado, desliga e volta a ligar o microfone. Confirma também em Definições → Safari → Microfone.</li>
           <li>O microfone é desligado quando sais desta página ou mudas de separador.</li>
         </ul>
       </details>

@@ -33,3 +33,8 @@ export function navigate(path: string): void {
 export function href(...segments: string[]): string {
   return `#/${segments.map(encodeURIComponent).join('/')}`;
 }
+
+/** Query parameters after the hash path (e.g. `#/praticar/notas?licao=m3-l1`). */
+export function hashQuery(): URLSearchParams {
+  return new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+}

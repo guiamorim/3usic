@@ -96,7 +96,7 @@ export function LessonPage({ lessonId }: { lessonId: string }) {
         </ol>
         <div className="button-row">
           {exercise && (
-            <a className="btn btn--secondary" href={href('praticar', exercise.id)}>
+            <a className="btn btn--secondary" href={`${href('praticar', exercise.id)}?licao=${encodeURIComponent(lesson.id)}`}>
               Exercício: {exercise.title}
             </a>
           )}
