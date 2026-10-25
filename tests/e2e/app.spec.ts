@@ -243,7 +243,13 @@ test.describe('músicas', () => {
     await expect(page.getByRole('link', { name: /Wonderwall/ })).toBeVisible();
     await page.getByRole('button', { name: 'Limpar filtros' }).click();
     await page.getByLabel('Artista').selectOption('The Beatles');
-    await expect(page.getByRole('status').filter({ hasText: /^2 músicas$/ })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /^3 músicas$/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Limpar filtros' }).click();
+    await page.getByLabel('País').selectOption('PT');
+    await expect(page.getByRole('link', { name: /Homem do Leme/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Wonderwall/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Limpar filtros' }).click();
+    await page.getByLabel('Artista').selectOption('The Beatles');
 
     await page.getByRole('link', { name: /Let It Be/ }).click();
     await expect(page.getByRole('heading', { name: 'Let It Be', level: 1 })).toBeVisible();
@@ -267,6 +273,22 @@ test.describe('músicas', () => {
     await page.getByRole('link', { name: /↔/ }).first().click();
     await expect(page.getByRole('heading', { name: 'Mudanças num minuto' })).toBeVisible();
     await expect(page.getByLabel('Par de acordes')).not.toHaveValue('A-D');
+  });
+
+  test('alterna entre versão simplificada e mais próxima do original', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/musicas/evidencias');
+    await expect(page.getByRole('heading', { name: 'Evidências', level: 1 })).toBeVisible();
+    await expect(page.getByLabel('Simplificada')).toBeChecked();
+    const sheet = page.getByRole('region', { name: 'Progressão' });
+    await expect(sheet.getByText('Cº', { exact: true })).toHaveCount(0);
+    await page.getByLabel('Mais próxima do original').click();
+    await expect(page.getByLabel('Mais próxima do original')).toBeChecked();
+    await expect(sheet.getByText('Cº', { exact: true })).toHaveCount(1);
+    await expect(page.getByText(/Acordes conferidos em cifras\.com\.br/)).toBeVisible();
+    // The choice is remembered.
+    await page.reload();
+    await expect(page.getByLabel('Mais próxima do original')).toBeChecked();
   });
 
   test('importa uma cifra em texto simples, mostra-a e apaga-a', async ({ page }) => {

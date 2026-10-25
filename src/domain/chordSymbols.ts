@@ -17,8 +17,9 @@ export interface ParsedChord {
 // Root, optional accidental, suffix, optional slash bass.
 const CHORD_RE = /^([A-G])([#b♯♭]?)([^/\s]*)(?:\/([A-G][#b♯♭]?))?$/;
 // Suffixes we recognise (anything else is rejected so lyric words are not mistaken for chords).
+// Covers international and Brazilian notation: m7, maj7, 7M, 7+, 7(9), 4 (= sus4), 5+, º, ø, add9…
 const SUFFIX_RE =
-  /^(?:m|min|-|maj|M|dim|°|aug|\+|sus|sus2|sus4|add9|add2|add11|5|6|7|9|11|13|m6|m7|m9|m11|maj7|maj9|M7|7M|m7b5|ø|7sus4|7sus2|dim7|°7|m\(maj7\)|mmaj7|6\/9|69|7b9|7#9|7#5|7b5|9sus4)?(?:\(?[#b♯♭]?\d{1,2}\)?)*$/;
+  /^(?:m|min|-|maj|M|dim|°|º|aug|\+|ø)?(?:\d{1,2}|maj\d{0,2}|M|add\d{1,2}|sus\d{0,2}|[#b♯♭+-]\d{1,2}|\+|°|º|ø|\((?:[#b♯♭+-]?\d{1,2}(?:[,/][#b♯♭+-]?\d{1,2})?|maj7|7M|M7|add\d{1,2}|sus\d)\))*$/;
 
 export function parseChordSymbol(raw: string): ParsedChord | null {
   const symbol = raw.trim();
@@ -42,18 +43,25 @@ export function isChordSymbol(token: string): boolean {
   return parseChordSymbol(token) !== null;
 }
 
-/** Simplifies a suffix to one of the qualities the library covers. */
+/**
+ * Maps a suffix to the closest quality the library covers, or null (diminished, augmented, unknown).
+ * A bare «9» is read as add9 (Brazilian usage) rather than a dominant ninth: both reduce safely to a triad.
+ */
 export function simplifyQuality(suffix: string): ChordQuality | null {
-  const s = suffix.replace(/[()]/g, '');
-  if (s === '' || s === 'M' || /^(add9|add2|6|69|6\/9|add11)$/.test(s)) return 'major';
-  if (/^(m|min|-|m6|madd9|m9|m11)$/.test(s)) return /^(m9|m11)$/.test(s) ? 'm7' : 'minor';
-  if (/^(maj7|M7|7M|maj9)$/.test(s)) return 'maj7';
-  if (/^(m7|min7|-7)$/.test(s)) return 'm7';
-  if (/^(7|9|11|13|7b9|7#9)$/.test(s)) return '7';
-  if (/^(sus2)$/.test(s)) return 'sus2';
-  if (/^(sus|sus4|7sus4|9sus4)$/.test(s)) return 'sus4';
-  if (s === '7sus2') return 'sus2';
+  const s = suffix.replace(/\s/g, '');
+  if (/^(dim|°|º|ø)/.test(s) || /^m7?\(?[b-]5\)?$/.test(s)) return null;
+  if (/^(aug|\+)/.test(s) || /5\+|\+5|#5/.test(s)) return null;
+  if (/^(m|min|-)(?!aj)/.test(s)) {
+    const rest = s.replace(/^(m|min|-)/, '');
+    if (/^(\(?maj7\)?|\(?7M\)?|\(?M7\)?)/.test(rest)) return 'minor';
+    return /^(7|9|11|13)/.test(rest) ? 'm7' : 'minor';
+  }
+  if (/^(maj7?|maj9|M7|M9|7M|7\+)/.test(s)) return 'maj7';
+  if (s === '' || s === 'M' || /^(6|69|add\d{1,2}|9|\(9\)|6\(9\)|2)$/.test(s)) return s === '2' ? 'sus2' : 'major';
+  if (/^(sus2|7sus2)$/.test(s)) return 'sus2';
+  if (/^(sus4?|4|7sus4?|7\(?4\)?|9sus4|sus\(?4\)?)$/.test(s)) return 'sus4';
   if (s === '5') return '5';
+  if (/^(7|9|11|13)/.test(s) || /^7\(?[#b♯♭+-]?\d/.test(s)) return '7';
   return null;
 }
 
@@ -71,13 +79,16 @@ function libraryChord(root: PitchClass, quality: ChordQuality): Chord | null {
   return candidates[0] ?? null;
 }
 
+/** Suffixes that name exactly one of the library qualities (international and Brazilian spellings). */
+const EXACT_SUFFIXES = new Set(['', 'M', 'm', 'min', '-', 'maj7', '7M', '7+', 'M7', 'm7', 'min7', '-7', '7', 'sus2', '2', 'sus4', 'sus', '4', '5']);
+
 export function matchChord(raw: string): ChordMatch | null {
   const parsed = parseChordSymbol(raw);
   if (!parsed) return null;
   const quality = simplifyQuality(parsed.suffix);
   if (!quality) return { parsed, chord: null, simplified: false };
   let chord = libraryChord(parsed.root, quality);
-  let simplified = parsed.bass !== null || !['', 'm', 'maj7', 'm7', '7', 'sus2', 'sus4', '5'].includes(parsed.suffix);
+  let simplified = parsed.bass !== null || !EXACT_SUFFIXES.has(parsed.suffix);
   // Fall back from 7th/sus/maj7 to the plain triad if the library lacks that shape.
   if (!chord && quality !== 'major' && quality !== 'minor') {
     const triad = quality === 'm7' ? 'minor' : 'major';
@@ -85,6 +96,22 @@ export function matchChord(raw: string): ChordMatch | null {
     simplified = chord !== null;
   }
   return { parsed, chord, simplified };
+}
+
+/**
+ * Beginner-friendly symbol: drops the slash bass and extensions, keeps major/minor, power chords
+ * and easy dominant sevenths. Returns null for passing chords that a simplified version leaves out
+ * (diminished, augmented, unknown).
+ */
+export function simplifySymbol(raw: string): string | null {
+  const p = parseChordSymbol(raw);
+  if (!p) return null;
+  const q = simplifyQuality(p.suffix);
+  if (q === null) return null;
+  // Power chords are already beginner-friendly: keep them.
+  let suffix = q === 'minor' || q === 'm7' ? 'm' : q === '7' ? '7' : q === '5' ? '5' : '';
+  if (suffix === '7' && !libraryChord(p.root, '7')) suffix = '';
+  return p.rootName + suffix;
 }
 
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];

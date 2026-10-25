@@ -95,6 +95,8 @@ export const SettingsSchema = z
     targetSongId: z.string().min(1).max(80).optional(),
     /** Library chord ids the user says they already know (besides those from lessons). */
     knownChords: z.array(IdSchema).max(100).optional(),
+    /** Which version of song sheets to show by default. */
+    songVersion: z.enum(['simple', 'full']).optional(),
   })
   .strict();
 

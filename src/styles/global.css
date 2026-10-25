@@ -1382,3 +1382,10 @@ legend {
     grid-column: 1 / -1;
   }
 }
+.version-switch {
+  margin: 0.25rem 0 0.75rem;
+}
+.version-switch legend {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}

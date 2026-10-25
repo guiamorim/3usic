@@ -10,7 +10,7 @@ import { practiceStats } from '../../domain/stats';
 import { LESSONS, MODULES } from '../../content/curriculum';
 import { INSTRUMENT_LABEL } from '../../content/labels';
 import { href } from '../../app/router';
-import { findSong } from '../../domain/songLibrary';
+import { findSong, versionOf } from '../../domain/songLibrary';
 import { buildSongPlan, knownChordIds, songFocus } from '../../domain/songPlan';
 
 /** Blocks whose time isn't logged automatically by another activity. */
@@ -25,9 +25,10 @@ export function DashboardPage() {
     const song = settings.targetSongId ? findSong(settings.targetSongId, data.songs) : undefined;
     if (!song) return null;
     const known = knownChordIds(completedLessons, settings.knownChords);
-    const songPlan = buildSongPlan({ sequence: song.sequence, known, tempo: song.sheet.meta.tempo });
+    const v = versionOf(song, settings.songVersion ?? 'simple');
+    const songPlan = buildSongPlan({ sequence: v.sequence, known, tempo: v.sheet.meta.tempo });
     return { song, songPlan, focus: songFocus(songPlan), route: href('musicas', song.id) };
-  }, [settings.targetSongId, settings.knownChords, data.songs, completedLessons]);
+  }, [settings.targetSongId, settings.knownChords, settings.songVersion, data.songs, completedLessons]);
   const plan = useMemo(
     () =>
       profile

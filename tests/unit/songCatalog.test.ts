@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CATALOG, decadeLabel, decadeOf } from '../../src/content/songs';
 import { isChordSymbol, matchChord } from '../../src/domain/chordSymbols';
-import { allSongs, catalogEntries, EMPTY_FILTER, facets, filterSongs, findSong, missingCount } from '../../src/domain/songLibrary';
+import { allSongs, catalogEntries, EMPTY_FILTER, facets, filterSongs, findSong, missingCount, versionOf } from '../../src/domain/songLibrary';
 import { GenreSchema } from '../../src/storage/schema';
 
 describe('catálogo de músicas', () => {
@@ -31,16 +31,39 @@ describe('catálogo de músicas', () => {
 
   it('as folhas de domínio público são lidas sem avisos', () => {
     for (const e of catalogEntries().filter((x) => x.fullSheet)) {
-      expect(e.sheet.warnings, e.id).toEqual([]);
-      expect(e.chords.length, e.id).toBeGreaterThan(1);
+      expect(e.full.sheet.warnings, e.id).toEqual([]);
+      expect(e.full.chords.length, e.id).toBeGreaterThan(1);
     }
   });
 
-  it('quase todos os acordes do catálogo têm diagrama na biblioteca', () => {
-    const symbols = new Set(catalogEntries().flatMap((e) => e.chords));
+  it('todos os acordes das versões simplificadas têm diagrama na biblioteca', () => {
+    const symbols = new Set(catalogEntries().flatMap((e) => e.simple.chords));
     const missing = [...symbols].filter((s) => !matchChord(s)?.chord);
-    // Known gaps are acceptable but must stay small and visible.
-    expect(missing.length).toBeLessThanOrEqual(3);
+    expect(missing).toEqual([]);
+  });
+
+  it('na versão original só faltam diagramas de acordes de passagem', () => {
+    const symbols = new Set(catalogEntries().flatMap((e) => e.full.chords));
+    const missing = [...symbols].filter((s) => !matchChord(s)?.chord);
+    for (const m of missing) expect(m, m).toMatch(/dim|º|°|5\+|aug/);
+  });
+
+  it('a versão simplificada nunca tem mais acordes diferentes do que a original', () => {
+    for (const e of catalogEntries()) {
+      expect(e.simple.chords.length, e.id).toBeLessThanOrEqual(e.full.chords.length);
+      if (!e.hasSimple) expect(e.simple.sequence).toEqual(e.full.sequence);
+    }
+    const ev = catalogEntries().find((e) => e.id === 'evidencias')!;
+    expect(ev.hasSimple).toBe(true);
+    expect(ev.simple.chords).not.toContain('Cº');
+    expect(ev.simple.chords).not.toContain('E/G#');
+  });
+
+  it('há rock clássico de cada país pedido, com acordes conferidos', () => {
+    const rock = catalogEntries().filter((e) => e.genre === 'rock');
+    for (const o of ['BR', 'PT', 'US', 'UK'] as const) {
+      expect(rock.filter((e) => e.origin === o && e.chordSource).length, o).toBeGreaterThanOrEqual(5);
+    }
   });
 
   it('décadas', () => {
@@ -65,9 +88,10 @@ describe('pesquisa e filtros', () => {
   it('filtra por estilo, década, artista, dificuldade, texto e origem', () => {
     expect(filterSongs(songs, { ...EMPTY_FILTER, genre: 'mpb-bossa' }, new Set()).every((s) => s.genre === 'mpb-bossa')).toBe(true);
     expect(filterSongs(songs, { ...EMPTY_FILTER, decade: 1990 }, new Set()).map((s) => s.id)).toContain('wonderwall');
-    expect(filterSongs(songs, { ...EMPTY_FILTER, artist: 'The Beatles' }, new Set()).map((s) => s.id).sort()).toEqual(['hey-jude', 'let-it-be']);
+    expect(filterSongs(songs, { ...EMPTY_FILTER, artist: 'The Beatles' }, new Set()).map((s) => s.id).sort()).toEqual(['here-comes-the-sun', 'hey-jude', 'let-it-be']);
     expect(filterSongs(songs, { ...EMPTY_FILTER, query: 'cancao' }, new Set()).map((s) => s.id)).toEqual(['song-x']);
-    expect(filterSongs(songs, { ...EMPTY_FILTER, difficulty: 1 }, new Set()).every((s) => s.difficulty === 1)).toBe(true);
+    expect(filterSongs(songs, { ...EMPTY_FILTER, difficulty: 1 }, new Set()).every((s) => versionOf(s, 'simple').difficulty === 1)).toBe(true);
+    expect(filterSongs(songs, { ...EMPTY_FILTER, origin: 'PT' }, new Set()).every((s) => s.origin === 'PT')).toBe(true);
     expect(filterSongs(songs, { ...EMPTY_FILTER, source: 'full' }, new Set()).every((s) => s.fullSheet)).toBe(true);
     expect(filterSongs(songs, { ...EMPTY_FILTER, source: 'user' }, new Set())).toHaveLength(1);
   });
@@ -76,7 +100,7 @@ describe('pesquisa e filtros', () => {
     const known = new Set(['G', 'D', 'Am', 'C']);
     const r = filterSongs(songs, { ...EMPTY_FILTER, playableOnly: true }, known);
     expect(r.map((s) => s.id)).toContain('knockin-on-heavens-door');
-    expect(r.every((s) => missingCount(s, known) <= 1)).toBe(true);
+    expect(r.every((s) => missingCount(versionOf(s, 'simple'), known) <= 1)).toBe(true);
   });
 
   it('facetas e procura por id', () => {
@@ -84,6 +108,7 @@ describe('pesquisa e filtros', () => {
     expect(f.decades[0]).toBe(1800);
     expect(f.artists).toContain('Oasis');
     expect(findSong('song-x', [])).toBeUndefined();
-    expect(findSong('let-it-be', [])?.chords).toEqual(['C', 'G', 'Am', 'F']);
+    expect(findSong('let-it-be', [])?.full.chords).toEqual(['C', 'G', 'Am', 'F']);
+    expect(f.origins).toEqual(expect.arrayContaining(['BR', 'PT', 'US', 'UK']));
   });
 });

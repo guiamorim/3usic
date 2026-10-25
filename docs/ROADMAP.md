@@ -12,11 +12,13 @@ Ver README → Funcionalidades.
 
 ## Implementado depois do MVP
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
+- Rock clássico BR/PT/US/UK, filtro por país, versões simplificada e mais próxima do original, power chords móveis (2026-10-25).
 
 ## Planeado (não implementado)
-- Mais músicas brasileiras e portuguesas no catálogo, com acordes confirmados por alguém que as toque.
+- Conferir os acordes das músicas internacionais mais antigas do catálogo (escritas de memória) e de «Garota de Ipanema».
+- Mais músicas brasileiras e portuguesas, com acordes confirmados por alguém que as toque.
 - Editar uma cifra importada dentro da app.
-- Diagramas para mais acordes (power chords móveis, acordes diminutos, aumentados, com nona).
+- Diagramas para mais acordes (diminutos, aumentados, com nona, sétima maior) para a versão original.
 - Rolagem automática da cifra ao ritmo da música.
 - Afinações alternativas (Drop D, meio-tom abaixo, DADGAD) e modo cromático no afinador.
 - Exercício de ritmo com toque em tempo real (medir desvio em relação ao metrónomo).

@@ -35,7 +35,8 @@ A versão 2 acrescenta o store `songs` (migração `oldVersion < 2` em `db.ts`) 
 - `src/domain/chordSymbols.ts`: lê símbolos de acordes (lista de sufixos permitidos, para não confundir palavras da letra com acordes), simplifica para as qualidades da biblioteca e transpõe.
 - `src/domain/chordpro.ts`: parser ChordPro e de texto simples (deteta linhas só com acordes e junta-as à letra por coluna), deteção automática de formato, limites (200 000 caracteres, 3000 linhas, 400 por linha), remoção de caracteres de controlo e serialização para ChordPro. Nada é avaliado nem inserido como HTML: o ecrã usa só nós de texto React.
 - `src/domain/songPlan.ts`: acordes conhecidos (lições concluídas + marcados), acordes em falta, transições mais frequentes, sugestão de capo (procura a casa de capo 1–7 que minimiza a dificuldade das formas), andamento lento e foco do dia.
-- `src/domain/songLibrary.ts`: junta catálogo e músicas importadas, filtros e facetas.
+- `src/domain/songLibrary.ts`: junta catálogo e músicas importadas, filtros (incluindo país) e facetas. Cada entrada tem duas vistas: `full` (a cifra como está) e `simple` (derivada com `simplifySong`, ou definida à mão no catálogo com `simple`). `versionOf(song, settings.songVersion)` escolhe a vista usada na lista, no detalhe e no plano do dia.
+- `simplifySong` (em `chordpro.ts`) passa cada acorde por `simplifySymbol`: 7M/maj7, add9, 6, sus → tríade; m7(9) → m; 7(9) → 7; diminutos/aumentados → removidos; baixo invertido → acorde sem o baixo (E/G# → E); power chords mantêm-se. Repetições seguidas são fundidas.
 - `src/content/songs.ts`: catálogo (ver ADR 0006).
 
 ## Pedagogia implementada

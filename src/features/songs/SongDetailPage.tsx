@@ -7,7 +7,8 @@ import { chordById } from '../../content/chords';
 import { GENRE_LABEL } from '../../content/labels';
 import { songChordSequence, toChordPro, transposeSong } from '../../domain/chordpro';
 import { transposeSymbol } from '../../domain/chordSymbols';
-import { findSong } from '../../domain/songLibrary';
+import { findSong, VERSION_LABEL, versionOf, type SongVersion } from '../../domain/songLibrary';
+import { ORIGIN_LABEL } from '../../content/songs';
 import { buildSongPlan, chordLabel, knownChordIds, suggestCapo, type SongStep } from '../../domain/songPlan';
 import { SongSheet } from './SongSheet';
 import { DIFFICULTY_LABEL } from './SongsPage';
@@ -43,14 +44,17 @@ export function SongDetailPage({ songId }: { songId: string }) {
     );
   }
 
-  const key = song.sheet.meta.key;
+  const version: SongVersion = settings.songVersion ?? 'simple';
+  const current = versionOf(song, version);
+  const base = current.sheet;
+  const key = base.meta.key;
   const preferFlats = key ? /^[A-G]b/.test(key) || FLAT_KEYS.has(key) : false;
   // Sounding key changes with `semitones`; the extra capo only changes the shapes you play.
-  const shapes = transposeSong(song.sheet, semitones - extraCapo, preferFlats);
-  const totalCapo = song.sheet.meta.capo + extraCapo;
+  const shapes = transposeSong(base, semitones - extraCapo, preferFlats);
+  const totalCapo = base.meta.capo + extraCapo;
   const sequence = songChordSequence(shapes);
-  const plan = buildSongPlan({ sequence, known, tempo: song.sheet.meta.tempo });
-  const capoTip = extraCapo === 0 ? suggestCapo(songChordSequence(transposeSong(song.sheet, semitones, preferFlats)), known) : null;
+  const plan = buildSongPlan({ sequence, known, tempo: base.meta.tempo });
+  const capoTip = extraCapo === 0 ? suggestCapo(songChordSequence(transposeSong(base, semitones, preferFlats)), known) : null;
   const isTarget = settings.targetSongId === song.id;
   const knownList = settings.knownChords ?? [];
 
@@ -136,20 +140,43 @@ export function SongDetailPage({ songId }: { songId: string }) {
     }
   }
 
-  const meta = song.sheet.meta;
+  const meta = base.meta;
   return (
     <Page title={song.title} back={{ href: '#/musicas', label: 'Músicas' }} subtitle={`${song.artist}${song.year !== null ? ` · ${song.yearApprox ? 'c. ' : ''}${song.year}` : ''}`}>
       <ul className="tag-list" aria-label="Detalhes">
         <li>{GENRE_LABEL[song.genre]}</li>
-        <li>Dificuldade: {DIFFICULTY_LABEL[song.difficulty]}</li>
+        {song.origin && <li>{ORIGIN_LABEL[song.origin]}</li>}
+        <li>Dificuldade: {DIFFICULTY_LABEL[current.difficulty]}</li>
         {meta.key && <li>Tom: {transposeSymbol(meta.key, semitones, preferFlats)}</li>}
         <li>{totalCapo > 0 ? `Capo na ${totalCapo}.ª casa` : 'Sem capo'}</li>
         {meta.tempo && <li>{meta.tempo} BPM</li>}
         {meta.time && <li>Compasso {meta.time}</li>}
+        {song.tuning && <li>Afinação: {song.tuning}</li>}
         {song.source === 'user' && <li>Importada (só neste dispositivo)</li>}
       </ul>
+      {song.hasSimple && (
+        <fieldset className="version-switch">
+          <legend>Versão dos acordes</legend>
+          <div className="choice-group choice-group--inline">
+            {(['simple', 'full'] as const).map((v) => (
+              <label key={v} className="chip">
+                <input type="radio" name="versao" checked={version === v} onChange={() => void saveSettings({ songVersion: v })} />
+                {VERSION_LABEL[v]}
+              </label>
+            ))}
+          </div>
+          <p className="hint">
+            {version === 'simple'
+              ? 'Sem baixos trocados, extensões nem acordes de passagem: a mesma harmonia com menos acordes diferentes.'
+              : `Acordes como na gravação (${song.full.chords.length} diferentes, contra ${song.simple.chords.length} na simplificada).`}
+          </p>
+        </fieldset>
+      )}
       {song.source === 'catalog' && !song.fullSheet && (
-        <p className="hint">Acordes de uma versão simplificada comum, sem letra (direitos de autor). Confirma com a gravação; tom e andamento são aproximados.</p>
+        <p className="hint">
+          Só acordes, sem letra (direitos de autor).{' '}
+          {song.chordSource ? `Acordes conferidos em ${song.chordSource}; as cifras desses sites são feitas por utilizadores e podem ter erros.` : 'Acordes escritos de memória, ainda não conferidos numa fonte.'} Confirma com a gravação; o andamento é aproximado.
+        </p>
       )}
       {song.note && <p className="notice notice--tip">{song.note}</p>}
 
@@ -174,7 +201,7 @@ export function SongDetailPage({ songId }: { songId: string }) {
         {capoTip && (
           <div className="notice notice--tip">
             <p>
-              Sugestão: com capo na {song.sheet.meta.capo + capoTip.capo}.ª casa, tocas as formas <strong>{capoTip.shapes.join(' – ')}</strong>, mais fáceis para ti. Soa igual.
+              Sugestão: com capo na {base.meta.capo + capoTip.capo}.ª casa, tocas as formas <strong>{capoTip.shapes.join(' – ')}</strong>, mais fáceis para ti. Soa igual.
             </p>
             <button type="button" className="btn btn--small btn--secondary" onClick={() => setExtraCapo(capoTip.capo)}>
               Usar estas formas

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isChordSymbol, matchChord, parseChordSymbol, simplifyQuality, transposeSymbol } from '../../src/domain/chordSymbols';
+import { isChordSymbol, matchChord, parseChordSymbol, simplifyQuality, simplifySymbol, transposeSymbol } from '../../src/domain/chordSymbols';
 import {
   detectFormat,
   isChordLine,
@@ -23,7 +23,7 @@ function ok(r: ReturnType<typeof parseSongText>): ParsedSong {
 
 describe('símbolos de acordes', () => {
   it('reconhece acordes comuns e rejeita palavras', () => {
-    for (const s of ['C', 'Am', 'F#m', 'Bb', 'G7', 'Cmaj7', 'Dsus4', 'E5', 'D/F#', 'Cadd9', 'Am7(b5)', 'C7M', 'Bm7b5', 'A°', 'Eb', 'G/B']) {
+    for (const s of ['C', 'Am', 'F#m', 'Bb', 'G7', 'Cmaj7', 'Dsus4', 'E5', 'D/F#', 'Cadd9', 'Am7(b5)', 'C7M', 'Bm7b5', 'A°', 'Eb', 'G/B', 'F7+', 'E5+', 'Cº', 'G4/B', 'A9', 'F#m7(11)', 'C#m7/B', 'D7(9)', 'E7(#9)', 'Bb9']) {
       expect(isChordSymbol(s), s).toBe(true);
     }
     for (const s of ['Amor', 'Dia', 'Em-te', 'Ele', 'Bom', 'Am,', 'H', 'Cantar', '']) expect(isChordSymbol(s), s).toBe(false);
@@ -38,7 +38,14 @@ describe('símbolos de acordes', () => {
   it('simplifica qualidades para as da biblioteca', () => {
     expect(simplifyQuality('add9')).toBe('major');
     expect(simplifyQuality('7M')).toBe('maj7');
-    expect(simplifyQuality('9')).toBe('7');
+    // Bare «9» is add9 in Brazilian notation; a triad is safe either way.
+    expect(simplifyQuality('9')).toBe('major');
+    expect(simplifyQuality('7(9)')).toBe('7');
+    expect(simplifyQuality('7+')).toBe('maj7');
+    expect(simplifyQuality('4')).toBe('sus4');
+    expect(simplifyQuality('m7(11)')).toBe('m7');
+    expect(simplifyQuality('5+')).toBeNull();
+    expect(simplifyQuality('º')).toBeNull();
     expect(simplifyQuality('sus')).toBe('sus4');
     expect(simplifyQuality('dim')).toBeNull();
   });
@@ -52,6 +59,22 @@ describe('símbolos de acordes', () => {
     expect(matchChord('Gmaj7')).toMatchObject({ chord: { id: 'G' }, simplified: true });
     expect(matchChord('Bdim')?.chord).toBeNull();
     expect(matchChord('palavra')).toBeNull();
+  });
+
+  it('gera a versão simplificada de cada acorde', () => {
+    expect(simplifySymbol('D/F#')).toBe('D');
+    expect(simplifySymbol('Am7')).toBe('Am');
+    expect(simplifySymbol('Cmaj7')).toBe('C');
+    expect(simplifySymbol('F7+/A')).toBe('F');
+    expect(simplifySymbol('G4/B')).toBe('G');
+    expect(simplifySymbol('E7')).toBe('E7');
+    expect(simplifySymbol('B7')).toBe('B7');
+    // No F#7 diagram in the library: falls back to the triad.
+    expect(simplifySymbol('F#7')).toBe('F#');
+    expect(simplifySymbol('A5')).toBe('A5');
+    expect(simplifySymbol('Cº')).toBeNull();
+    expect(simplifySymbol('E5+')).toBeNull();
+    expect(simplifySymbol('palavra')).toBeNull();
   });
 
   it('transpõe mantendo o sufixo e o baixo', () => {

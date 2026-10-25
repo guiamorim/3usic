@@ -3,8 +3,8 @@ import { useStore } from '../../app/store';
 import { href } from '../../app/router';
 import { Page } from '../../components/Page';
 import { GENRE_LABEL } from '../../content/labels';
-import { decadeLabel } from '../../content/songs';
-import { allSongs, EMPTY_FILTER, facets, filterSongs, missingCount, type SongFilter } from '../../domain/songLibrary';
+import { decadeLabel, ORIGIN_LABEL, type Origin } from '../../content/songs';
+import { allSongs, EMPTY_FILTER, facets, filterSongs, missingCount, VERSION_LABEL, versionOf, type SongFilter, type SongVersion } from '../../domain/songLibrary';
 import { analyzeChords, knownChordIds } from '../../domain/songPlan';
 import type { Genre } from '../../storage/schema';
 
@@ -18,12 +18,13 @@ const SOURCE_LABEL: Record<SongFilter['source'], string> = {
 };
 
 export function SongsPage() {
-  const { data, completedLessons, settings } = useStore();
+  const { data, completedLessons, settings, saveSettings } = useStore();
+  const version: SongVersion = settings.songVersion ?? 'simple';
   const [f, setF] = useState<SongFilter>(EMPTY_FILTER);
   const known = useMemo(() => knownChordIds(completedLessons, settings.knownChords), [completedLessons, settings.knownChords]);
   const songs = useMemo(() => allSongs(data.songs), [data.songs]);
-  const { genres, decades, artists } = useMemo(() => facets(songs), [songs]);
-  const list = filterSongs(songs, f, known, data.profile?.genres ?? []);
+  const { genres, origins, decades, artists } = useMemo(() => facets(songs), [songs]);
+  const list = filterSongs(songs, f, known, data.profile?.genres ?? [], version);
   const set = (patch: Partial<SongFilter>) => setF((prev) => ({ ...prev, ...patch }));
   const active = JSON.stringify(f) !== JSON.stringify(EMPTY_FILTER);
 
@@ -35,7 +36,7 @@ export function SongsPage() {
         </a>
       </div>
       <p className="notice notice--info">
-        As músicas famosas mostram só os acordes de uma versão simplificada comum: a letra está protegida por direitos de autor. Confirma sempre com a gravação. As que têm letra completa são de domínio público. Podes importar as tuas próprias cifras; ficam só neste dispositivo.
+        As músicas famosas mostram só os acordes (a letra está protegida por direitos de autor), numa versão simplificada ou mais próxima do original. Confirma sempre com a gravação. As que têm letra completa são de domínio público. Podes importar as tuas próprias cifras; ficam só neste dispositivo.
       </p>
 
       <div className="filters filters--songs" role="search">
@@ -50,6 +51,17 @@ export function SongsPage() {
             {genres.map((g) => (
               <option key={g} value={g}>
                 {GENRE_LABEL[g]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>País</span>
+          <select value={f.origin} onChange={(e) => set({ origin: e.target.value as Origin | '' })}>
+            <option value="">Todos</option>
+            {origins.map((o) => (
+              <option key={o} value={o}>
+                {ORIGIN_LABEL[o]}
               </option>
             ))}
           </select>
@@ -96,6 +108,17 @@ export function SongsPage() {
           </select>
         </label>
       </div>
+      <fieldset className="version-switch">
+        <legend>Versão dos acordes</legend>
+        <div className="choice-group choice-group--inline">
+          {(['simple', 'full'] as const).map((v) => (
+            <label key={v} className="chip">
+              <input type="radio" name="versao-lista" checked={version === v} onChange={() => void saveSettings({ songVersion: v })} />
+              {VERSION_LABEL[v]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="chip">
         <input type="checkbox" checked={f.playableOnly} onChange={(e) => set({ playableOnly: e.target.checked })} />
         Só as que já consigo tocar (falta no máximo 1 acorde)
@@ -115,8 +138,9 @@ export function SongsPage() {
       {list.length === 0 && <p>Nenhuma música corresponde aos filtros.{f.playableOnly && ' Aprende mais acordes ou desliga «Só as que já consigo tocar».'}</p>}
       <ul className="song-list">
         {list.map((s) => {
-          const missing = missingCount(s, known);
-          const info = analyzeChords(s.chords, known);
+          const v = versionOf(s, version);
+          const missing = missingCount(v, known);
+          const info = analyzeChords(v.chords, known);
           return (
             <li key={s.id}>
               <a className="card song-card" href={href('musicas', s.id)}>
@@ -127,10 +151,11 @@ export function SongsPage() {
                 </span>
                 <span className="song-card__meta">
                   <span className="badge">{GENRE_LABEL[s.genre]}</span>
-                  <span className={`difficulty difficulty--${s.difficulty}`}>{DIFFICULTY_LABEL[s.difficulty]}</span>
+                  <span className={`difficulty difficulty--${v.difficulty}`}>{DIFFICULTY_LABEL[v.difficulty]}</span>
+                  {s.origin && <span className="badge">{ORIGIN_LABEL[s.origin]}</span>}
                   {s.source === 'user' && <span className="badge">Importada</span>}
                   {s.source === 'catalog' && s.fullSheet && <span className="badge">Letra completa</span>}
-                  {s.chords.length > 0 &&
+                  {v.chords.length > 0 &&
                     (missing === 0 ? (
                       <span className="status-ok">Já sabes todos os acordes</span>
                     ) : (

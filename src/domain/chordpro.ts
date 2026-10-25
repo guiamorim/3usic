@@ -2,7 +2,7 @@
 //  1. ChordPro (https://www.chordpro.org): {directives} and inline [C]chords.
 //  2. Plain "chords over lyrics" text, as found in most cifra books and sites.
 // Everything here is pure string processing: imported text is never evaluated or rendered as HTML.
-import { isChordSymbol, parseChordSymbol, transposeSymbol } from './chordSymbols';
+import { isChordSymbol, parseChordSymbol, simplifySymbol, transposeSymbol } from './chordSymbols';
 
 export const MAX_SONG_CHARS = 200_000;
 export const MAX_SONG_LINES = 3000;
@@ -467,6 +467,35 @@ export function transposeSong(song: ParsedSong, semitones: number, preferFlats =
     sections: song.sections.map((s) => ({
       ...s,
       lines: s.lines.map((l) => (l.kind === 'lyrics' ? { kind: 'lyrics', segments: l.segments.map((seg) => ({ ...seg, chord: seg.chord ? t(seg.chord) : null })) } : l)),
+    })),
+  };
+}
+
+/**
+ * Simplified version of a sheet: every chord goes through simplifySymbol (no slash basses or
+ * extensions; passing diminished/augmented chords removed). Lyrics are kept untouched.
+ */
+export function simplifySong(song: ParsedSong): ParsedSong {
+  const simplifyLine = (segments: Segment[]): Segment[] => {
+    const mapped = segments.map((seg) => ({ ...seg, chord: seg.chord && parseChordSymbol(seg.chord) ? simplifySymbol(seg.chord) : seg.chord }));
+    const out: Segment[] = [];
+    if (!mapped.some((x) => x.text.trim())) {
+      // Chord-only line: drop removed chords and immediate repeats.
+      for (const x of mapped) if (x.chord && out.at(-1)?.chord !== x.chord) out.push(x);
+      return out;
+    }
+    for (const x of mapped) {
+      const prev = out.at(-1);
+      if (x.chord === null && prev) out[out.length - 1] = { ...prev, text: prev.text + x.text };
+      else out.push(x);
+    }
+    return out;
+  };
+  return {
+    ...song,
+    sections: song.sections.map((s) => ({
+      ...s,
+      lines: s.lines.map((l) => (l.kind === 'lyrics' ? { kind: 'lyrics' as const, segments: simplifyLine(l.segments) } : l)),
     })),
   };
 }
