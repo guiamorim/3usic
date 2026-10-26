@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../../app/store';
-import { href } from '../../app/router';
+import { hashQuery, href } from '../../app/router';
 import { Page } from '../../components/Page';
 import { GENRE_LABEL } from '../../content/labels';
 import { decadeLabel, ORIGIN_LABEL, type Origin } from '../../content/songs';
@@ -20,13 +20,14 @@ const SOURCE_LABEL: Record<SongFilter['source'], string> = {
 export function SongsPage() {
   const { data, completedLessons, settings, saveSettings } = useStore();
   const version: SongVersion = settings.songVersion ?? 'simple';
-  const [f, setF] = useState<SongFilter>(EMPTY_FILTER);
+  const [f, setF] = useState<SongFilter>(() => ({ ...EMPTY_FILTER, collection: hashQuery().get('colecao') === 'infantil' ? 'infantil' : 'main' }));
   const known = useMemo(() => knownChordIds(completedLessons, settings.knownChords), [completedLessons, settings.knownChords]);
   const songs = useMemo(() => allSongs(data.songs), [data.songs]);
-  const { genres, origins, decades, artists } = useMemo(() => facets(songs), [songs]);
+  const { genres, origins, decades, artists } = useMemo(() => facets(songs.filter((s) => s.kids === (f.collection === 'infantil'))), [songs, f.collection]);
   const list = filterSongs(songs, f, known, data.profile?.genres ?? [], version);
   const set = (patch: Partial<SongFilter>) => setF((prev) => ({ ...prev, ...patch }));
-  const active = JSON.stringify(f) !== JSON.stringify(EMPTY_FILTER);
+  const active = JSON.stringify({ ...f, collection: 'main' }) !== JSON.stringify(EMPTY_FILTER);
+  const kids = f.collection === 'infantil';
 
   return (
     <Page title="Músicas" subtitle="Escolhe uma música para treinar: a app mostra os acordes que te faltam e monta um plano para chegares lá.">
@@ -35,7 +36,20 @@ export function SongsPage() {
           Importar cifra
         </a>
       </div>
-      <p className="notice notice--info">
+      <div className="segmented" role="group" aria-label="Secção">
+        <button type="button" className="segmented__item" aria-pressed={!kids} onClick={() => set({ collection: 'main' })}>
+          Todas as músicas
+        </button>
+        <button type="button" className="segmented__item" aria-pressed={kids} onClick={() => set({ collection: 'infantil' })}>
+          Infantis e festas
+        </button>
+      </div>
+      {kids && (
+        <p className="notice notice--info">
+          Cantigas de roda e canções infantis tradicionais do Brasil e de Portugal, com letra completa (domínio público) e acordes fáceis, quase sempre só dois ou três. O «Parabéns a você» está nas versões brasileira e portuguesa, só com acordes.
+        </p>
+      )}
+      <p className="notice notice--info" hidden={kids}>
         As músicas famosas mostram só os acordes (a letra está protegida por direitos de autor), numa versão simplificada ou mais próxima do original. Confirma sempre com a gravação. As que têm letra completa são de domínio público. Podes importar as tuas próprias cifras; ficam só neste dispositivo.
       </p>
 
@@ -129,7 +143,7 @@ export function SongsPage() {
           {list.length} {list.length === 1 ? 'música' : 'músicas'}
         </p>
         {active && (
-          <button type="button" className="btn btn--ghost btn--small" onClick={() => setF(EMPTY_FILTER)}>
+          <button type="button" className="btn btn--ghost btn--small" onClick={() => setF({ ...EMPTY_FILTER, collection: f.collection })}>
             Limpar filtros
           </button>
         )}

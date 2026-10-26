@@ -6,6 +6,7 @@
 // Full sheets (lyrics + chords) are included only for public-domain songs, with chord arrangements
 // written for this project. See docs/decisions/0006-musicas-e-direitos.md.
 import type { Genre } from '../storage/schema';
+import { KIDS } from './kidsSongs';
 
 export interface ProgressionPart {
   label: string;
@@ -55,6 +56,8 @@ export interface CatalogSong {
   chordpro?: string;
   /** Suggested strumming pattern (↓ ↑ · as in lesson 5). */
   strum?: string;
+  /** Children's and party songs get their own section in «Músicas». */
+  collection?: 'infantil';
   note?: string;
 }
 
@@ -344,6 +347,7 @@ For [Em]auld [C]lang [D]syne[G].
   },
   {
     id: 'atirei-o-pau-ao-gato', origin: 'PT',
+    collection: 'infantil',
     title: 'Atirei o Pau ao Gato',
     artist: 'Tradicional portuguesa (domínio público)',
     year: 1900,
@@ -398,7 +402,7 @@ Com o [G7]berro, rro-rro, que o gato [C]deu: miau!
   },
 ];
 
-export const CATALOG: readonly CatalogSong[] = [...POP_ROCK, ...FOLK_BLUES, ...CLASSIC_ROCK, ...BRASIL, ...PORTUGAL, ...PUBLIC_DOMAIN];
+export const CATALOG: readonly CatalogSong[] = [...POP_ROCK, ...FOLK_BLUES, ...CLASSIC_ROCK, ...BRASIL, ...PORTUGAL, ...PUBLIC_DOMAIN, ...KIDS];
 
 export function catalogSongById(id: string): CatalogSong | undefined {
   return CATALOG.find((s) => s.id === id);

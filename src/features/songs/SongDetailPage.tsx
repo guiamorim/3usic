@@ -151,7 +151,7 @@ export function SongDetailPage({ songId }: { songId: string }) {
 
   const meta = base.meta;
   return (
-    <Page title={song.title} back={{ href: '#/musicas', label: 'Músicas' }} subtitle={`${song.artist}${song.year !== null ? ` · ${song.yearApprox ? 'c. ' : ''}${song.year}` : ''}`}>
+    <Page title={song.title} back={song.kids ? { href: '#/musicas?colecao=infantil', label: 'Infantis e festas' } : { href: '#/musicas', label: 'Músicas' }} subtitle={`${song.artist}${song.year !== null ? ` · ${song.yearApprox ? 'c. ' : ''}${song.year}` : ''}`}>
       <ul className="tag-list" aria-label="Detalhes">
         <li>{GENRE_LABEL[song.genre]}</li>
         {song.origin && <li>{ORIGIN_LABEL[song.origin]}</li>}
@@ -184,7 +184,10 @@ export function SongDetailPage({ songId }: { songId: string }) {
       {song.source === 'catalog' && !song.fullSheet && (
         <p className="hint">
           Só acordes, sem letra (direitos de autor).{' '}
-          {song.chordSource ? `Acordes conferidos em ${song.chordSource}; as cifras desses sites são feitas por utilizadores e podem ter erros.` : 'Acordes escritos de memória, ainda não conferidos numa fonte.'} Confirma com a gravação; o andamento é aproximado.
+          {song.kids
+            ? 'Harmonia simples escrita para este projeto (tónica, dominante e subdominante).'
+            : song.chordSource ? `Acordes conferidos em ${song.chordSource}; as cifras desses sites são feitas por utilizadores e podem ter erros.` : 'Acordes escritos de memória, ainda não conferidos numa fonte.'}{' '}
+          {!song.kids && 'Confirma com a gravação; o andamento é aproximado.'}
         </p>
       )}
       {song.note && <p className="notice notice--tip">{song.note}</p>}

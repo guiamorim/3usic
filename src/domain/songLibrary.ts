@@ -40,6 +40,8 @@ export interface SongEntry {
   tuning?: string;
   /** Where the catalogue chords were checked, if they were. */
   chordSource?: string;
+  /** Children's and party songs (own section in «Músicas»). */
+  kids: boolean;
 }
 
 function progressionSections(parts: readonly ProgressionPart[]): SongSection[] {
@@ -96,6 +98,7 @@ export function catalogEntry(song: CatalogSong): SongEntry {
     note: song.note,
     tuning: song.tuning,
     chordSource: song.chordSource,
+    kids: song.collection === 'infantil',
   };
 }
 
@@ -114,6 +117,7 @@ export function userEntry(song: UserSong): SongEntry {
     origin: null,
     fullSheet: true,
     ...withVersions(sheet),
+    kids: false,
   };
 }
 
@@ -149,9 +153,11 @@ export interface SongFilter {
   /** Only songs whose chords are all known (or one missing at most). */
   playableOnly: boolean;
   source: 'all' | 'catalog' | 'user' | 'full';
+  /** Which section: the main list or children's and party songs. */
+  collection: 'main' | 'infantil';
 }
 
-export const EMPTY_FILTER: SongFilter = { query: '', genre: '', origin: '', decade: null, artist: '', difficulty: 0, playableOnly: false, source: 'all' };
+export const EMPTY_FILTER: SongFilter = { query: '', genre: '', origin: '', decade: null, artist: '', difficulty: 0, playableOnly: false, source: 'all', collection: 'main' };
 
 function fold(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -172,6 +178,7 @@ export function filterSongs(
   const q = fold(f.query.trim());
   const out = songs.filter((s) => {
     const v = versionOf(s, version);
+    if (s.kids !== (f.collection === 'infantil')) return false;
     if (q && !fold(`${s.title} ${s.artist} ${v.chords.join(' ')}`).includes(q)) return false;
     if (f.genre && s.genre !== f.genre) return false;
     if (f.origin && s.origin !== f.origin) return false;

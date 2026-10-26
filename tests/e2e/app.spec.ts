@@ -535,3 +535,15 @@ test.describe('melhorias da revisão', () => {
     }
   });
 });
+
+test('secção de canções infantis e Parabéns', async ({ page }) => {
+  await onboard(page);
+  await page.goto('/#/musicas');
+  await page.getByRole('button', { name: 'Infantis e festas' }).click();
+  await expect(page.getByRole('link', { name: /Parabéns a Você \(versão brasileira\)/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Parabéns a Você \(versão portuguesa\)/ })).toBeVisible();
+  await page.getByRole('link', { name: /Ciranda, Cirandinha/ }).click();
+  await expect(page.getByText('vamos todos ciran', { exact: false }).first()).toBeVisible();
+  await page.getByRole('link', { name: 'Infantis e festas' }).click();
+  await expect(page.getByRole('button', { name: 'Infantis e festas' })).toHaveAttribute('aria-pressed', 'true');
+});

@@ -112,3 +112,22 @@ describe('pesquisa e filtros', () => {
     expect(f.origins).toEqual(expect.arrayContaining(['BR', 'PT', 'US', 'UK']));
   });
 });
+
+describe('secção infantis e festas', () => {
+  it('fica separada da lista principal e inclui o Parabéns PT e BR só com acordes', () => {
+    const songs = allSongs([]);
+    const kids = filterSongs(songs, { ...EMPTY_FILTER, collection: 'infantil' }, new Set());
+    const main = filterSongs(songs, EMPTY_FILTER, new Set());
+    expect(kids.length).toBeGreaterThanOrEqual(15);
+    expect(kids.every((s) => s.kids)).toBe(true);
+    expect(main.some((s) => s.kids)).toBe(false);
+    for (const id of ['parabens-a-voce-br', 'parabens-a-voce-pt']) {
+      const s = findSong(id, [])!;
+      expect(s.kids).toBe(true);
+      expect(s.fullSheet).toBe(false);
+    }
+    expect(new Set(kids.map((s) => s.origin))).toEqual(new Set(['BR', 'PT']));
+    // Beginner-friendly: every children's song uses at most 4 different chords.
+    for (const s of kids) expect(versionOf(s, 'simple').chords.length, s.id).toBeLessThanOrEqual(4);
+  });
+});

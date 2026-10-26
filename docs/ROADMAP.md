@@ -12,6 +12,7 @@ Ver README → Funcionalidades.
 
 ## Implementado depois do MVP
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
+- Secção «Infantis e festas» em Músicas (2026-10-26): 17 cantigas tradicionais do Brasil e de Portugal com letra (domínio público) e harmonização própria; «Parabéns a você» nas versões BR e PT só com acordes (letra com autoria identificada/incerta).
 - Melhorias da revisão (2026-10-26): pedido automático de armazenamento persistente e lembrete de cópia a cada 14 dias, ecrã de erro por página, ecrãs carregados a pedido e `zod/mini` (arranque 552 → 377 KB), navegação com 5 separadores + «Mais», ícones SVG, tokens de raio/tipo, retomar exercício interrompido, sensibilidade e diagnóstico do microfone no Tocar junto, avaliação de ritmo nas Batidas, 28 músicas conferidas.
 - Modo guiado pelo plano, ecrã sempre ligado, diagramas fixos na cifra, novo visual do Início, correções de toque duplo/zoom no iOS (2026-10-25).
 - Tocar junto com reconhecimento de acordes, separador Batidas, atalho para letra + colar cifra na música, afinador com Hz/histórico/modo cromático, correções de áudio no iPhone (2026-10-25).
