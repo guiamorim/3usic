@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { z } from 'zod';
+import type * as z from 'zod/mini';
 import {
   AttemptSchema,
   ChordChangeRecordSchema,
@@ -65,7 +65,7 @@ export interface AppStorage {
   clearAll(): Promise<void>;
 }
 
-function validateList<T>(schema: z.ZodType<T>, raw: unknown[]): { valid: T[]; invalid: number } {
+function validateList<T>(schema: z.ZodMiniType<T>, raw: unknown[]): { valid: T[]; invalid: number } {
   const valid: T[] = [];
   let invalid = 0;
   for (const r of raw) {

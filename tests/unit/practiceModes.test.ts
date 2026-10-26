@@ -103,7 +103,11 @@ describe('tocar junto: linha do tempo e pontuação', () => {
   const song = catalogEntry(CATALOG.find((s) => s.id === 'tempo-perdido')!);
 
   it('compassos do catálogo: acordes no mesmo compasso dividem os tempos', () => {
-    const t = buildTimeline(song.full.sheet, { beatsPerBar: 4, barsFromLines: true, beatsPerChord: 4 });
+    const t = buildTimeline(song.full.sheet, {
+      beatsPerBar: 4,
+      barsFromLines: true,
+      beatsPerChord: 4,
+    });
     expect(t.length).toBeGreaterThan(0);
     // Every bar adds up to 4 beats.
     expect(totalBeats(t) % 4).toBe(0);
@@ -116,7 +120,11 @@ describe('tocar junto: linha do tempo e pontuação', () => {
   it('junta acordes repetidos seguidos e mantém a letra das cifras importadas', () => {
     const r = parseChordPro('{title: X}\n[G]Uma [G]linha [D]aqui\n[C]Outra');
     if (!r.ok) throw new Error();
-    const t = buildTimeline(r.song, { beatsPerBar: 4, barsFromLines: false, beatsPerChord: 2 });
+    const t = buildTimeline(r.song, {
+      beatsPerBar: 4,
+      barsFromLines: false,
+      beatsPerChord: 2,
+    });
     expect(t.map((e) => [e.chord, e.beats])).toEqual([
       ['G', 4],
       ['D', 2],
@@ -126,7 +134,11 @@ describe('tocar junto: linha do tempo e pontuação', () => {
   });
 
   it('repete a progressão e encontra o acorde de cada tempo', () => {
-    const base = buildTimeline(song.simple.sheet, { beatsPerBar: 4, barsFromLines: true, beatsPerChord: 4 });
+    const base = buildTimeline(song.simple.sheet, {
+      beatsPerBar: 4,
+      barsFromLines: true,
+      beatsPerChord: 4,
+    });
     const t = repeatTimeline(base, 2);
     expect(t).toHaveLength(base.length * 2);
     expect(totalBeats(t)).toBe(totalBeats(base) * 2);
@@ -147,7 +159,13 @@ describe('tocar junto: linha do tempo e pontuação', () => {
     expect(verdict({ frames: 10, voiced: 8, matched: 4 })).toBe('hit');
     expect(verdict({ frames: 10, voiced: 8, matched: 1 })).toBe('miss');
     expect(verdict({ frames: 10, voiced: 1, matched: 1 })).toBe('silent');
-    expect(score(['hit', 'hit', 'miss', 'hit', 'silent'])).toEqual({ hits: 3, misses: 1, silent: 1, percent: 60, bestStreak: 2 });
+    expect(score(['hit', 'hit', 'miss', 'hit', 'silent'])).toEqual({
+      hits: 3,
+      misses: 1,
+      silent: 1,
+      percent: 60,
+      bestStreak: 2,
+    });
     expect(score([]).percent).toBe(0);
   });
 });
@@ -187,5 +205,16 @@ describe('batidas', () => {
     const late = collectSlots(state, 7, 0.1, d);
     expect(late.slots.length).toBeLessThanOrEqual(1);
     expect(late.slots[0]!.time).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe('sensibilidade do Tocar junto', () => {
+  it('a sensibilidade alta aceita menos reconhecimentos do que a baixa', async () => {
+    const { THRESHOLDS, verdict } = await import('../../src/domain/playAlong');
+    const t = { frames: 10, voiced: 10, matched: 3 };
+    expect(verdict(t, THRESHOLDS.high.hitRatio)).toBe('hit');
+    expect(verdict(t, THRESHOLDS.normal.hitRatio)).toBe('miss');
+    expect(verdict(t, THRESHOLDS.low.hitRatio)).toBe('miss');
+    expect(THRESHOLDS.high.minSimilarity).toBeLessThan(THRESHOLDS.low.minSimilarity);
   });
 });

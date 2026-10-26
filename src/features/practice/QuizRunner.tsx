@@ -7,6 +7,8 @@ import { NoteFigure } from '../../components/NoteFigure';
 import { playInterval } from '../../audio/synth';
 import { isAudioSupported } from '../../audio/context';
 
+const nowMs = () => Date.now();
+
 export interface QuizItem {
   question: Question;
   skillId: string;
@@ -81,17 +83,23 @@ function Visual({ q }: { q: Question }) {
 interface Props {
   items: QuizItem[];
   onFinish(results: SkillResult[], durationSec: number): void;
+  /** Answers already given in an earlier, interrupted run of the same items. */
+  resume?: { answers: boolean[]; elapsedSec: number };
+  /** Called after every answer, to save the run. */
+  onProgress?(answers: boolean[], elapsedSec: number): void;
 }
 
-export function QuizRunner({ items, onFinish }: Props) {
-  const [index, setIndex] = useState(0);
+export function QuizRunner({ items, onFinish, resume, onProgress }: Props) {
+  const [index, setIndex] = useState(() => Math.min(resume?.answers.length ?? 0, Math.max(0, items.length - 1)));
   const [chosen, setChosen] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<boolean[]>([]);
+  const [answers, setAnswers] = useState<boolean[]>(() => resume?.answers.slice(0, items.length - 1) ?? []);
   const startedAt = useRef(0);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    startedAt.current = Date.now();
+    startedAt.current = Date.now() - (resume?.elapsedSec ?? 0) * 1000;
+    // Only the initial resume point matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const item = items[index];
@@ -102,7 +110,9 @@ export function QuizRunner({ items, onFinish }: Props) {
   function choose(option: string) {
     if (answered) return;
     setChosen(option);
-    setAnswers((a) => [...a, option === q.answer]);
+    const next = [...answers, option === q.answer];
+    setAnswers(next);
+    onProgress?.(next, (nowMs() - startedAt.current) / 1000);
     requestAnimationFrame(() => feedbackRef.current?.focus());
   }
 
@@ -111,7 +121,11 @@ export function QuizRunner({ items, onFinish }: Props) {
       const all = [...answers];
       const bySkill = new Map<string, SkillResult>();
       items.forEach((it, i) => {
-        const r = bySkill.get(it.skillId) ?? { skillId: it.skillId, correct: 0, total: 0 };
+        const r = bySkill.get(it.skillId) ?? {
+          skillId: it.skillId,
+          correct: 0,
+          total: 0,
+        };
         r.total++;
         if (all[i]) r.correct++;
         bySkill.set(it.skillId, r);

@@ -11,7 +11,8 @@ import { SOLFEGE } from '../../domain/notes';
 const ERROR_TEXT: Record<TunerError, string> = {
   unsupported: 'Este navegador não permite usar o microfone para afinar. Usa os sons de referência abaixo para afinar de ouvido.',
   insecure: 'O microfone só funciona em ligações seguras (HTTPS) ou em localhost. Abre a aplicação através de um endereço seguro.',
-  denied: 'O acesso ao microfone foi recusado. Para afinar com o microfone, autoriza-o nas definições do navegador para este site e tenta de novo. Entretanto podes afinar de ouvido com os sons de referência.',
+  denied:
+    'O acesso ao microfone foi recusado. Para afinar com o microfone, autoriza-o nas definições do navegador para este site e tenta de novo. Entretanto podes afinar de ouvido com os sons de referência.',
   'no-mic': 'Não foi encontrado nenhum microfone. Liga um microfone ou usa os sons de referência.',
   busy: 'O microfone está a ser usado por outra aplicação. Fecha-a e tenta de novo.',
   unknown: 'Não foi possível iniciar o microfone. Tenta de novo ou usa os sons de referência.',
@@ -114,7 +115,11 @@ export function TunerPage() {
   const listening = status.state === 'listening' || status.state === 'starting';
 
   return (
-    <Page title="Afinador" back={{ href: '#/ferramentas', label: 'Ferramentas' }} subtitle="Afinação padrão (Mi Lá Ré Sol Si Mi). O som do microfone é analisado só neste dispositivo: nada é gravado nem enviado.">
+    <Page
+      title="Afinador"
+      back={{ href: '#/ferramentas', label: 'Mais' }}
+      subtitle="Afinação padrão (Mi Lá Ré Sol Si Mi). O som do microfone é analisado só neste dispositivo: nada é gravado nem enviado."
+    >
       {status.state === 'error' && (
         <p className="notice notice--error" role="alert">
           {ERROR_TEXT[status.error]}
@@ -177,11 +182,11 @@ export function TunerPage() {
                     ? `Ouço ${reading.note.pitchClass.replace('#', '♯')}${reading.note.octave}, longe de qualquer corda solta. Se a corda está muito desafinada, usa o modo cromático.`
                     : reading && tState
                       ? `${STATE_TEXT[tState]} (${rawCents > 0 ? '+' : ''}${Math.round(rawCents)} cents)`
-                    : status.state === 'listening' && status.hint === 'no-input'
-                      ? 'O microfone está ligado mas não chega som. Desliga e volta a ligar o microfone; se continuar, fecha outras apps que usem o microfone (chamadas, gravador) e recarrega a página.'
-                      : status.state === 'listening' && status.hint === 'noisy'
-                        ? 'Não consigo identificar uma nota. Há ruído ou várias cordas a soar: toca uma corda de cada vez, perto do microfone, e abafa as outras.'
-                        : 'Toca uma corda solta e deixa-a soar.'}
+                      : status.state === 'listening' && status.hint === 'no-input'
+                        ? 'O microfone está ligado mas não chega som. Desliga e volta a ligar o microfone; se continuar, fecha outras apps que usem o microfone (chamadas, gravador) e recarrega a página.'
+                        : status.state === 'listening' && status.hint === 'noisy'
+                          ? 'Não consigo identificar uma nota. Há ruído ou várias cordas a soar: toca uma corda de cada vez, perto do microfone, e abafa as outras.'
+                          : 'Toca uma corda solta e deixa-a soar.'}
               </p>
               <PitchHistory points={history} />
               <div className="level" aria-hidden="true">
@@ -215,7 +220,7 @@ export function TunerPage() {
         ) : (
           <p className="notice notice--info">Este navegador não suporta a geração de som.</p>
         )}
-        <p className="hint">Referência: Lá = {a4} Hz (alterável em Ferramentas → Perfil e preferências).</p>
+        <p className="hint">Referência: Lá = {a4} Hz (alterável em Mais → Perfil e preferências).</p>
       </section>
 
       <details className="card">

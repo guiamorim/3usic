@@ -50,7 +50,14 @@ export function buildTimeline(sheet: ParsedSong, opts: TimelineOptions): PlayEve
         .trim();
       const lyric = text || null;
       const lengths = opts.barsFromLines && !lyric ? split(opts.beatsPerBar, chords.length) : chords.map(() => opts.beatsPerChord);
-      chords.forEach((chord, i) => raw.push({ chord, beats: lengths[i] ?? opts.beatsPerChord, section: section.label, lyric }));
+      chords.forEach((chord, i) =>
+        raw.push({
+          chord,
+          beats: lengths[i] ?? opts.beatsPerChord,
+          section: section.label,
+          lyric,
+        }),
+      );
     }
   }
   // Merge repeated chords (e.g. "C | C") into one longer event: easier to read and to judge.
@@ -73,7 +80,12 @@ export function repeatTimeline(timeline: readonly PlayEvent[], times: number): P
   const length = totalBeats(timeline);
   const out: PlayEvent[] = [];
   for (let r = 0; r < Math.max(1, times); r++) {
-    for (const e of timeline) out.push({ ...e, index: out.length, startBeat: e.startBeat + r * length });
+    for (const e of timeline)
+      out.push({
+        ...e,
+        index: out.length,
+        startBeat: e.startBeat + r * length,
+      });
   }
   return out;
 }
@@ -106,13 +118,34 @@ export interface FrameTally {
 
 export const EMPTY_TALLY: FrameTally = { frames: 0, voiced: 0, matched: 0 };
 
+export type MicSensitivity = 'low' | 'normal' | 'high';
+
+export interface DetectionThresholds {
+  /** RMS below which a frame counts as silence (room noise, gaps between strums). */
+  voicedRms: number;
+  /** Minimum chroma similarity with the expected chord (see judgeChord). */
+  minSimilarity: number;
+  /** Share of voiced frames that must recognise the chord for a hit. */
+  hitRatio: number;
+}
+
 /**
- * A chord counts as played when it was recognised in at least 35 % of the frames with sound
- * (strums decay and hands move, so 100 % is unrealistic). Too little sound = silent.
+ * Untested on real devices yet: «normal» is the lab default. «low» suits noisy rooms (fewer
+ * false hits), «high» suits quiet phone mics or soft playing (more forgiving).
  */
-export function verdict(t: FrameTally): ChordVerdict {
+export const THRESHOLDS: Record<MicSensitivity, DetectionThresholds> = {
+  low: { voicedRms: 0.012, minSimilarity: 0.68, hitRatio: 0.45 },
+  normal: { voicedRms: 0.006, minSimilarity: 0.6, hitRatio: 0.35 },
+  high: { voicedRms: 0.003, minSimilarity: 0.52, hitRatio: 0.25 },
+};
+
+/**
+ * A chord counts as played when it was recognised in at least `hitRatio` (35 % by default) of
+ * the frames with sound (strums decay and hands move, so 100 % is unrealistic). Too little sound = silent.
+ */
+export function verdict(t: FrameTally, hitRatio = THRESHOLDS.normal.hitRatio): ChordVerdict {
   if (t.voiced < Math.max(2, t.frames * 0.15)) return 'silent';
-  return t.matched / t.voiced >= 0.35 ? 'hit' : 'miss';
+  return t.matched / t.voiced >= hitRatio ? 'hit' : 'miss';
 }
 
 export interface PlayScore {
@@ -142,5 +175,11 @@ export function score(verdicts: readonly ChordVerdict[]): PlayScore {
     }
   }
   const judged = verdicts.length;
-  return { hits, misses, silent, percent: judged ? Math.round((hits / judged) * 100) : 0, bestStreak };
+  return {
+    hits,
+    misses,
+    silent,
+    percent: judged ? Math.round((hits / judged) * 100) : 0,
+    bestStreak,
+  };
 }

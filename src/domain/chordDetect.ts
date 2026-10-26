@@ -127,8 +127,16 @@ const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /** The 24 major and minor triads: what a beginner most likely plays instead of the expected chord. */
 const COMPETITORS: readonly { label: string; root: number; t: Float32Array }[] = NAMES.flatMap((name, root) => [
-  { label: name, root, t: template([root, (root + 4) % 12, (root + 7) % 12]) },
-  { label: `${name}m`, root, t: template([root, (root + 3) % 12, (root + 7) % 12]) },
+  {
+    label: name,
+    root,
+    t: template([root, (root + 4) % 12, (root + 7) % 12]),
+  },
+  {
+    label: `${name}m`,
+    root,
+    t: template([root, (root + 3) % 12, (root + 7) % 12]),
+  },
 ]);
 
 export interface ChordJudgement {
@@ -147,7 +155,7 @@ const TIE_TOLERANCE = 0.03;
  * other major/minor triad (with a small tolerance). Same-root triads don't compete with power
  * chords or with 7th/sus extensions of that root, so a beginner playing the triad still passes.
  */
-export function judgeChord(chroma: Float32Array, expected: string): ChordJudgement {
+export function judgeChord(chroma: Float32Array, expected: string, minSimilarity = MIN_SIMILARITY): ChordJudgement {
   const pcs = chordPitchSet(expected);
   const p = parseChordSymbol(expected);
   if (!pcs || !p) return { match: false, similarity: 0, heard: null };
@@ -169,6 +177,6 @@ export function judgeChord(chroma: Float32Array, expected: string): ChordJudgeme
     if (sameChord || (lenient && c.root === root)) continue;
     bestOther = Math.max(bestOther, s);
   }
-  const match = similarity >= MIN_SIMILARITY && similarity >= bestOther - TIE_TOLERANCE;
+  const match = similarity >= minSimilarity && similarity >= bestOther - TIE_TOLERANCE;
   return { match, similarity, heard };
 }

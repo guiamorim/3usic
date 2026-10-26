@@ -8,6 +8,7 @@ import { QuizRunner, type QuizItem, type SkillResult } from './QuizRunner';
 import { ChordChangesPage } from './ChordChangesPage';
 import { exerciseBySkill } from '../../domain/exercises';
 import { LessonContinue } from '../curriculum/LessonContinue';
+import { clearDraft, loadDraft, saveDraft } from '../../storage/quizDraft';
 
 function Summary({ results, onRetry }: { results: SkillResult[]; onRetry(): void }) {
   const { data } = useStore();
@@ -50,18 +51,33 @@ function Summary({ results, onRetry }: { results: SkillResult[]; onRetry(): void
   );
 }
 
-function QuizSession({ title, subtitle, makeItems }: { title: string; subtitle: string; makeItems(seed: number): QuizItem[] }) {
+function QuizSession({ title, subtitle, makeItems, draftKey }: { title: string; subtitle: string; makeItems(seed: number): QuizItem[]; draftKey: string }) {
   const { recordExercise } = useStore();
-  const [seed, setSeed] = useState(() => Date.now() % 2147483647);
+  const [draft, setDraft] = useState(() => loadDraft(draftKey, localDay()));
+  const [seed, setSeed] = useState(() => draft?.seed ?? Date.now() % 2147483647);
   const items = useMemo(() => makeItems(seed), [makeItems, seed]);
   const [results, setResults] = useState<SkillResult[] | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
 
+  function restart() {
+    clearDraft(draftKey);
+    setDraft(null);
+    setResults(null);
+    setSeed((s) => s + 1);
+  }
+
   async function finish(res: SkillResult[], durationSec: number) {
+    clearDraft(draftKey);
+    setDraft(null);
     const total = res.reduce((s, r) => s + r.total, 0) || 1;
     let ok = true;
     for (const r of res) {
-      ok = (await recordExercise({ ...r, durationSec: (durationSec * r.total) / total, label: SKILL_LABEL[r.skillId] ?? title })) && ok;
+      ok =
+        (await recordExercise({
+          ...r,
+          durationSec: (durationSec * r.total) / total,
+          label: SKILL_LABEL[r.skillId] ?? title,
+        })) && ok;
     }
     setSaveFailed(!ok);
     setResults(res);
@@ -72,18 +88,35 @@ function QuizSession({ title, subtitle, makeItems }: { title: string; subtitle: 
       {results ? (
         <>
           {saveFailed && <p className="notice notice--error">O resultado não foi guardado.</p>}
-          <Summary
-            results={results}
-            onRetry={() => {
-              setResults(null);
-              setSeed((s) => s + 1);
-            }}
-          />
+          <Summary results={results} onRetry={restart} />
         </>
       ) : items.length === 0 ? (
         <p>Não há perguntas disponíveis.</p>
       ) : (
-        <QuizRunner key={seed} items={items} onFinish={(r, d) => void finish(r, d)} />
+        <>
+          {draft && (
+            <p className="notice notice--info" role="status">
+              Continuas onde ficaste: {draft.answers.length} de {items.length} perguntas já respondidas.{' '}
+              <button type="button" className="btn btn--small btn--ghost" onClick={restart}>
+                Recomeçar
+              </button>
+            </p>
+          )}
+          <QuizRunner
+            key={seed}
+            items={items}
+            resume={draft ?? undefined}
+            onProgress={(answers, elapsedSec) =>
+              saveDraft(draftKey, {
+                seed,
+                day: localDay(),
+                answers,
+                elapsedSec,
+              })
+            }
+            onFinish={(r, d) => void finish(r, d)}
+          />
+        </>
       )}
     </Page>
   );
@@ -101,10 +134,7 @@ export function ExercisePage({ exerciseId, arg }: { exerciseId: string; arg?: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const makeQuiz = useMemo(
-    () => (seed: number) => (def?.generate ? def.generate(seededRng(seed), def.questionCount).map((question) => ({ question, skillId: def.skillId })) : []),
-    [def],
-  );
+  const makeQuiz = useMemo(() => (seed: number) => (def?.generate ? def.generate(seededRng(seed), def.questionCount).map((question) => ({ question, skillId: def.skillId })) : []), [def]);
   const makeReview = useMemo(() => (seed: number) => generateReview(seededRng(seed), dueIds, Math.min(12, Math.max(6, dueIds.length * 3))), [dueIds]);
 
   if (exerciseId === 'revisao') {
@@ -115,7 +145,7 @@ export function ExercisePage({ exerciseId, arg }: { exerciseId: string; arg?: st
         </Page>
       );
     }
-    return <QuizSession title="Revisão" subtitle="Perguntas intercaladas das competências que estão na altura de rever." makeItems={makeReview} />;
+    return <QuizSession title="Revisão" subtitle="Perguntas intercaladas das competências que estão na altura de rever." makeItems={makeReview} draftKey={`revisao:${dueIds.join(',')}`} />;
   }
   if (!def) {
     return (
@@ -125,5 +155,5 @@ export function ExercisePage({ exerciseId, arg }: { exerciseId: string; arg?: st
     );
   }
   if (def.kind === 'chord-changes') return <ChordChangesPage initialPair={arg} />;
-  return <QuizSession title={def.title} subtitle={def.description} makeItems={makeQuiz} />;
+  return <QuizSession title={def.title} subtitle={def.description} makeItems={makeQuiz} draftKey={def.id} />;
 }

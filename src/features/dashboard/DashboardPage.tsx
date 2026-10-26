@@ -1,6 +1,7 @@
 import { useStore } from '../../app/store';
 import { ProgressBar } from '../../components/Page';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentType } from 'react';
+import { IconBook, IconChart, IconCheck, IconFlame, IconGrid, IconHand, IconMetronome, IconMusic, IconRepeat, IconSave, IconStrum, IconTarget, IconTuner } from '../../components/Icons';
 import { overallProgress } from '../../domain/progression';
 import { dueSkills } from '../../domain/srs';
 import { exerciseBySkill } from '../../domain/exercises';
@@ -11,23 +12,34 @@ import { INSTRUMENT_LABEL } from '../../content/labels';
 import { href } from '../../app/router';
 import { setPlanStep } from '../../app/planFlow';
 import { LOG_ON_CHECK, useTodayPlan } from '../../app/useTodayPlan';
+import { backupDue } from '../../domain/backup';
+import { addDays } from '../../domain/dates';
 
-const BLOCK_ICON: Record<BlockKind, string> = {
-  aquecimento: '🔥',
-  revisao: '🔁',
-  tecnica: '✋',
-  novo: '📘',
-  aplicacao: '🎵',
+// SVG line icons (same set as the navigation): emoji look different on every phone.
+const BLOCK_ICON: Record<BlockKind, ComponentType> = {
+  aquecimento: IconFlame,
+  revisao: IconRepeat,
+  tecnica: IconHand,
+  novo: IconBook,
+  aplicacao: IconMusic,
 };
 
 const SHORTCUTS = [
-  { href: '#/afinador', icon: '🎚️', label: 'Afinador', tone: 'a' },
-  { href: '#/metronomo', icon: '⏱️', label: 'Metrónomo', tone: 'b' },
-  { href: '#/batidas', icon: '🥁', label: 'Batidas', tone: 'c' },
-  { href: '#/musicas', icon: '🎸', label: 'Músicas', tone: 'd' },
-  { href: '#/acordes', icon: '🖐️', label: 'Acordes', tone: 'e' },
-  { href: '#/progresso', icon: '📈', label: 'Progresso', tone: 'f' },
+  { href: '#/afinador', Icon: IconTuner, label: 'Afinador', tone: 'a' },
+  { href: '#/metronomo', Icon: IconMetronome, label: 'Metrónomo', tone: 'b' },
+  { href: '#/batidas', Icon: IconStrum, label: 'Batidas', tone: 'c' },
+  { href: '#/musicas', Icon: IconMusic, label: 'Músicas', tone: 'd' },
+  { href: '#/acordes', Icon: IconGrid, label: 'Acordes', tone: 'e' },
+  { href: '#/progresso', Icon: IconChart, label: 'Progresso', tone: 'f' },
 ] as const;
+
+function HeadingIcon({ Icon }: { Icon: ComponentType }) {
+  return (
+    <span className="h-icon" aria-hidden="true">
+      <Icon />
+    </span>
+  );
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -51,7 +63,7 @@ function Ring({ done, total }: { done: number; total: number }) {
 }
 
 export function DashboardPage() {
-  const { data, completedLessons, togglePlanBlock } = useStore();
+  const { data, completedLessons, togglePlanBlock, settings, saveSettings } = useStore();
   const { plan, done, completion, recommended, target, today } = useTodayPlan();
   const h1 = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -69,6 +81,12 @@ export function DashboardPage() {
   const next = nextBlock(plan, done);
   const allDone = plan.length > 0 && !next;
   const started = completion.done > 0;
+  const showBackup = backupDue({
+    today,
+    lastExportDay: settings.lastExportDay,
+    snoozedUntil: settings.backupSnoozedUntil,
+    practiceDays: new Set(data.practice.map((p) => p.day)).size,
+  });
 
   return (
     <>
@@ -81,9 +99,7 @@ export function DashboardPage() {
             {allDone ? 'Plano de hoje concluído!' : 'Hoje'}
           </h1>
           <p className="hero__sub">
-            {allDone
-              ? `Fizeste ${stats.todayMinutes} min de prática. Amanhã há um plano novo.`
-              : `${profile.sessionMinutes} min por sessão · ${stats.todayMinutes} min feitos hoje`}
+            {allDone ? `Fizeste ${stats.todayMinutes} min de prática. Amanhã há um plano novo.` : `${profile.sessionMinutes} min por sessão · ${stats.todayMinutes} min feitos hoje`}
           </p>
         </div>
         <Ring done={completion.done} total={completion.total} />
@@ -93,6 +109,27 @@ export function DashboardPage() {
           </a>
         )}
       </section>
+
+      {showBackup && (
+        <section className="card card--warn" aria-labelledby="backup-title">
+          <h2 id="backup-title">
+            <HeadingIcon Icon={IconSave} />
+            Faz uma cópia do teu progresso
+          </h2>
+          <p>
+            {settings.lastExportDay ? `A última cópia foi há mais de 2 semanas.` : 'Ainda não fizeste nenhuma cópia.'} O progresso fica só neste navegador: se o telemóvel limpar os dados do site,
+            perde-se. Um ficheiro guardado (por exemplo, no iCloud ou no Google Drive) resolve isso.
+          </p>
+          <div className="button-row">
+            <a className="btn btn--primary" href="#/dados">
+              Exportar agora
+            </a>
+            <button type="button" className="btn btn--ghost" onClick={() => void saveSettings({ backupSnoozedUntil: addDays(today, 7) })}>
+              Lembrar daqui a 7 dias
+            </button>
+          </div>
+        </section>
+      )}
 
       <details className="card how-to" open={completedLessons.size < 3 && !started}>
         <summary>
@@ -116,7 +153,7 @@ export function DashboardPage() {
             <span>No fim, voltas aqui com o plano concluído. Amanhã há um plano novo, adaptado ao que já fizeste.</span>
           </li>
         </ol>
-        <p className="hint">Os separadores em baixo (Aprender, Praticar, Músicas, Batidas, Acordes) servem para explorar livremente quando quiseres.</p>
+        <p className="hint">Os separadores em baixo (Aprender, Praticar, Músicas e Mais, onde estão o afinador, os acordes e as batidas) servem para explorar livremente quando quiseres.</p>
       </details>
 
       <section className="card" aria-labelledby="plan-title">
@@ -129,10 +166,11 @@ export function DashboardPage() {
         <ol className="plan">
           {plan.map((b, i) => {
             const checked = done.has(b.id);
+            const BlockIcon = checked ? IconCheck : BLOCK_ICON[b.id];
             return (
               <li key={b.id} className={`plan__item${checked ? ' plan__item--done' : ''}${next?.id === b.id ? ' plan__item--next' : ''}`}>
                 <span className="plan__icon" aria-hidden="true">
-                  {checked ? '✓' : BLOCK_ICON[b.id]}
+                  <BlockIcon />
                 </span>
                 <div className="plan__body">
                   <div className="plan__title">
@@ -143,7 +181,12 @@ export function DashboardPage() {
                   </div>
                   <p>{b.description}</p>
                   <div className="plan__actions">
-                    <a className={next?.id === b.id ? 'btn btn--primary btn--small' : 'btn btn--secondary btn--small'} href={b.route} aria-label={`Abrir: ${b.title}`} onClick={() => setPlanStep(b.id)}>
+                    <a
+                      className={next?.id === b.id ? 'btn btn--primary btn--small' : 'btn btn--secondary btn--small'}
+                      href={b.route}
+                      aria-label={`Abrir: ${b.title}`}
+                      onClick={() => setPlanStep(b.id)}
+                    >
                       Abrir
                     </a>
                     <label className="plan__check">
@@ -168,7 +211,7 @@ export function DashboardPage() {
         {SHORTCUTS.map((s) => (
           <a key={s.href} className={`tile tile--${s.tone}`} href={s.href}>
             <span className="tile__icon" aria-hidden="true">
-              {s.icon}
+              <s.Icon />
             </span>
             <span className="tile__label">{s.label}</span>
           </a>
@@ -177,7 +220,10 @@ export function DashboardPage() {
 
       <section className="card card--accent" aria-labelledby="song-title">
         <div className="card__head">
-          <h2 id="song-title">🎯 Música objetivo</h2>
+          <h2 id="song-title">
+            <HeadingIcon Icon={IconTarget} />
+            Música objetivo
+          </h2>
           <a href="#/musicas">Ver músicas</a>
         </div>
         {target ? (
@@ -209,7 +255,10 @@ export function DashboardPage() {
 
       {recommended ? (
         <section className="card" aria-labelledby="rec-title">
-          <h2 id="rec-title">📘 Lição recomendada</h2>
+          <h2 id="rec-title">
+            <HeadingIcon Icon={IconBook} />
+            Lição recomendada
+          </h2>
           <p className="muted">
             Módulo {module?.number} · {module?.title}
           </p>
@@ -227,7 +276,10 @@ export function DashboardPage() {
       )}
 
       <section className="card" aria-labelledby="review-title">
-        <h2 id="review-title">🔁 Para rever</h2>
+        <h2 id="review-title">
+          <HeadingIcon Icon={IconRepeat} />
+          Para rever
+        </h2>
         {due.length === 0 ? (
           <p className="muted">Nada pendente. As competências que praticares aparecem aqui quando for altura de as rever.</p>
         ) : (
@@ -246,7 +298,10 @@ export function DashboardPage() {
 
       <section className="card" aria-labelledby="progress-title">
         <div className="card__head">
-          <h2 id="progress-title">📈 Progresso</h2>
+          <h2 id="progress-title">
+            <HeadingIcon Icon={IconChart} />
+            Progresso
+          </h2>
           <a href="#/progresso">Ver detalhes</a>
         </div>
         <p>

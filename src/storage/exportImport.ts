@@ -19,9 +19,7 @@ export function exportFileName(now = new Date()): string {
   return `braco-progresso-${now.toISOString().slice(0, 10)}.json`;
 }
 
-export type ImportResult =
-  | { ok: true; file: ExportFile; summary: ImportSummary }
-  | { ok: false; error: string };
+export type ImportResult = { ok: true; file: ExportFile; summary: ImportSummary } | { ok: false; error: string };
 
 export interface ImportSummary {
   exportedAt: string;
@@ -45,15 +43,31 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> | string
     // v2 added imported songs.
     const data = out.data;
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-      out = { ...out, schemaVersion: 2, data: { ...(data as Record<string, unknown>), songs: [] } };
+      out = {
+        ...out,
+        schemaVersion: 2,
+        data: { ...(data as Record<string, unknown>), songs: [] },
+      };
     }
   }
   return out;
 }
 
-function formatIssue(issue: { path: PropertyKey[]; message: string }): string {
+// zod/mini ships without locale messages, so issues are described here (in pt-PT) by code.
+const ISSUE_TEXT: Record<string, string> = {
+  invalid_type: 'tipo inválido',
+  invalid_format: 'formato inválido',
+  invalid_value: 'valor não permitido',
+  too_big: 'valor acima do limite',
+  too_small: 'valor abaixo do limite',
+  unrecognized_keys: 'campo desconhecido',
+};
+
+function formatIssue(issue: { path: PropertyKey[]; code?: string; message: string; keys?: string[] }): string {
   const path = issue.path.map(String).join('.');
-  return path ? `${path}: ${issue.message}` : issue.message;
+  let text = (issue.code && ISSUE_TEXT[issue.code]) ?? issue.message;
+  if (issue.keys?.length) text += ` (${issue.keys.join(', ')})`;
+  return path ? `${path}: ${text}` : text;
 }
 
 /**
@@ -69,10 +83,17 @@ export function parseImport(text: string): ImportResult {
     return { ok: false, error: 'O ficheiro não é JSON válido.' };
   }
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    return { ok: false, error: 'Formato inesperado: o ficheiro deve conter um objeto JSON.' };
+    return {
+      ok: false,
+      error: 'Formato inesperado: o ficheiro deve conter um objeto JSON.',
+    };
   }
   const rec = raw as Record<string, unknown>;
-  if (rec.app !== 'braco-guitarra') return { ok: false, error: 'Este ficheiro não foi exportado por esta aplicação.' };
+  if (rec.app !== 'braco-guitarra')
+    return {
+      ok: false,
+      error: 'Este ficheiro não foi exportado por esta aplicação.',
+    };
   const migrated = migrate(rec);
   if (typeof migrated === 'string') return { ok: false, error: migrated };
 

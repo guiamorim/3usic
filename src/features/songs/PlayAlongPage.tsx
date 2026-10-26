@@ -11,7 +11,21 @@ import type { TunerError } from '../../audio/tuner';
 import { matchChord } from '../../domain/chordSymbols';
 import { chromagram, judgeChord } from '../../domain/chordDetect';
 import { soundingMidi } from '../../domain/guitar';
-import { beatsPerBar, buildTimeline, repeatTimeline, EMPTY_TALLY, eventAt, score, totalBeats, verdict, type ChordVerdict, type FrameTally, type PlayEvent } from '../../domain/playAlong';
+import {
+  beatsPerBar,
+  buildTimeline,
+  repeatTimeline,
+  EMPTY_TALLY,
+  eventAt,
+  score,
+  THRESHOLDS,
+  totalBeats,
+  verdict,
+  type ChordVerdict,
+  type FrameTally,
+  type MicSensitivity,
+  type PlayEvent,
+} from '../../domain/playAlong';
 import { clampBpm } from '../../audio/metronomeScheduler';
 import { slowTempo } from '../../domain/songPlan';
 import { findSong, VERSION_LABEL, versionOf, type SongVersion } from '../../domain/songLibrary';
@@ -29,14 +43,30 @@ const MIC_ERROR: Record<TunerError, string> = {
 };
 
 const ANALYSIS_MS = 100;
-// Frames quieter than this are not judged (silence between strums, room noise).
-const VOICED_RMS = 0.006;
 // Consecutive recognised frames needed to move on in «esperar» mode (~0.3 s).
 const WAIT_FRAMES = 3;
 
 const now = () => performance.now();
 
-const VERDICT_TEXT: Record<ChordVerdict, string> = { hit: 'Certo', miss: 'Não reconhecido', silent: 'Sem som' };
+const SENSITIVITY_LABEL: Record<MicSensitivity, string> = {
+  low: 'Baixa: sala com ruído, menos acertos falsos',
+  normal: 'Normal',
+  high: 'Alta: microfone fraco ou tocar suave, mais tolerante',
+};
+
+interface Live {
+  match: boolean;
+  heard: string | null;
+  level: number;
+  rms: number;
+  similarity: number;
+}
+
+const VERDICT_TEXT: Record<ChordVerdict, string> = {
+  hit: 'Certo',
+  miss: 'Não reconhecido',
+  silent: 'Sem som',
+};
 
 function chordMidis(symbol: string): number[] | null {
   const m = matchChord(symbol);
@@ -44,7 +74,9 @@ function chordMidis(symbol: string): number[] | null {
 }
 
 export function PlayAlongPage({ songId }: { songId: string }) {
-  const { data, settings, recordPractice } = useStore();
+  const { data, settings, recordPractice, saveSettings } = useStore();
+  const sensitivity: MicSensitivity = settings.micSensitivity ?? 'normal';
+  const limits = THRESHOLDS[sensitivity];
   const song = useMemo(() => findSong(songId, data.songs), [songId, data.songs]);
   const version: SongVersion = settings.songVersion ?? 'simple';
   const view = song ? versionOf(song, version) : null;
@@ -62,14 +94,26 @@ export function PlayAlongPage({ songId }: { songId: string }) {
   const [beat, setBeat] = useState(-barBeats);
   const [waitIndex, setWaitIndex] = useState(0);
   const [verdicts, setVerdicts] = useState<ChordVerdict[]>([]);
-  const [live, setLive] = useState<{ match: boolean; heard: string | null; level: number } | null>(null);
+  const [live, setLive] = useState<Live | null>(null);
+  const [diagnostics, setDiagnostics] = useState(false);
+  const [tally, setTally] = useState<FrameTally | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(false);
   const [evaluated, setEvaluated] = useState(false);
   const [repeats, setRepeats] = useState(2);
 
   const timeline = useMemo(
-    () => (view ? repeatTimeline(buildTimeline(view.sheet, { beatsPerBar: barBeats, barsFromLines, beatsPerChord }), barsFromLines ? repeats : 1) : []),
+    () =>
+      view
+        ? repeatTimeline(
+            buildTimeline(view.sheet, {
+              beatsPerBar: barBeats,
+              barsFromLines,
+              beatsPerChord,
+            }),
+            barsFromLines ? repeats : 1,
+          )
+        : [],
     [view, barBeats, barsFromLines, beatsPerChord, repeats],
   );
   const total = totalBeats(timeline);
@@ -129,7 +173,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
   }
 
   function closeEvent(index: number): void {
-    const v = verdict(tallies.current[index] ?? EMPTY_TALLY);
+    const v = verdict(tallies.current[index] ?? EMPTY_TALLY, limits.hitRatio);
     judged.current = index + 1;
     setVerdicts((prev) => {
       const next = [...prev];
@@ -177,7 +221,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
         const m = mic.current;
         if (!m?.read(buf)) return;
         const level = rms(buf);
-        const voiced = level > VOICED_RMS;
+        const voiced = level > limits.voicedRms;
         let index: number;
         let inWindow = true;
         if (mode === 'tempo') {
@@ -197,8 +241,14 @@ export function PlayAlongPage({ songId }: { songId: string }) {
           index = wait;
         }
         const ev = timeline[index] as PlayEvent;
-        const j = voiced ? judgeChord(chromagram(buf, { sampleRate: m.sampleRate }), ev.chord) : null;
-        setLive({ match: !!j?.match, heard: j?.heard ?? null, level: Math.min(1, Math.sqrt(level / 0.2)) });
+        const j = voiced ? judgeChord(chromagram(buf, { sampleRate: m.sampleRate }), ev.chord, limits.minSimilarity) : null;
+        setLive({
+          match: !!j?.match,
+          heard: j?.heard ?? null,
+          level: Math.min(1, Math.sqrt(level / 0.2)),
+          rms: level,
+          similarity: j?.similarity ?? 0,
+        });
         if (mode === 'tempo') {
           if (!inWindow) return;
           const t = tallies.current[index] ?? { ...EMPTY_TALLY };
@@ -206,6 +256,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
           if (voiced) t.voiced++;
           if (j?.match) t.matched++;
           tallies.current[index] = t;
+          setTally({ ...t });
           return;
         }
         consecutive = j?.match ? consecutive + 1 : 0;
@@ -241,7 +292,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
   }
 
   function finishTempo(): void {
-    const final = timeline.map((_, i) => (mic.current ? verdict(tallies.current[i] ?? EMPTY_TALLY) : 'silent'));
+    const final = timeline.map((_, i) => (mic.current ? verdict(tallies.current[i] ?? EMPTY_TALLY, limits.hitRatio) : 'silent'));
     if (!mic.current) {
       stopAll();
       setPhase('done');
@@ -258,7 +309,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
       return;
     }
     // Judge the chord in progress too, if it was already heard.
-    const partial = tallies.current.map((t, i) => (i < judged.current || t.frames > 0 ? verdict(t) : null)).filter((v): v is ChordVerdict => v !== null);
+    const partial = tallies.current.map((t, i) => (i < judged.current || t.frames > 0 ? verdict(t, limits.hitRatio) : null)).filter((v): v is ChordVerdict => v !== null);
     finish(partial);
   }
 
@@ -283,9 +334,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
     <Page title={`Tocar junto: ${song.title}`} back={back} subtitle={`${song.artist} · versão ${VERSION_LABEL[version].toLowerCase()} · ${barBeats} tempos por compasso`}>
       {phase === 'setup' && (
         <section className="card">
-          <p>
-            A app mostra o acorde que deves tocar, marca o tempo e, se ligares o microfone, verifica se o acorde soou certo. O som é analisado só neste dispositivo: nada é gravado nem enviado.
-          </p>
+          <p>A app mostra o acorde que deves tocar, marca o tempo e, se ligares o microfone, verifica se o acorde soou certo. O som é analisado só neste dispositivo: nada é gravado nem enviado.</p>
           <fieldset className="version-switch">
             <legend>Modo</legend>
             <div className="choice-group">
@@ -352,12 +401,39 @@ export function PlayAlongPage({ songId }: { songId: string }) {
               </label>
               <label className="chip">
                 <input type="checkbox" checked={backing && !useMic} disabled={useMic} onChange={(e) => setBacking(e.target.checked)} />
-                Acompanhamento (a app toca o acorde){useMic ? ': desliga o microfone para usar' : ''}
+                Acompanhamento (a app toca o acorde)
+                {useMic ? ': desliga o microfone para usar' : ''}
+              </label>
+            </>
+          )}
+          {(useMic || needsMic) && (
+            <>
+              <label className="field">
+                <span>Sensibilidade do microfone</span>
+                <select
+                  value={sensitivity}
+                  onChange={(e) =>
+                    void saveSettings({
+                      micSensitivity: e.target.value as MicSensitivity,
+                    })
+                  }
+                >
+                  {(Object.keys(SENSITIVITY_LABEL) as MicSensitivity[]).map((k) => (
+                    <option key={k} value={k}>
+                      {SENSITIVITY_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="chip">
+                <input type="checkbox" checked={diagnostics} onChange={(e) => setDiagnostics(e.target.checked)} />
+                Mostrar diagnóstico (o que o microfone ouve)
               </label>
             </>
           )}
           <p className="hint">
-            {timeline.length} acordes · {mode === 'tempo' ? `cerca de ${Math.round((total * 60) / bpm / 6) / 10} min` : 'ao teu ritmo'}. A gravação original não é reproduzida (direitos de autor); se quiseres, põe a música a tocar noutro aparelho.
+            {timeline.length} acordes · {mode === 'tempo' ? `cerca de ${Math.round((total * 60) / bpm / 6) / 10} min` : 'ao teu ritmo'}. A gravação original não é reproduzida (direitos de autor); se
+            quiseres, põe a música a tocar noutro aparelho.
           </p>
           {micError && (
             <p className="notice notice--error" role="alert">
@@ -406,12 +482,46 @@ export function PlayAlongPage({ songId }: { songId: string }) {
               <div className="level" aria-hidden="true">
                 <span>Som captado</span>
                 <div className="level__bar">
-                  <div className="level__fill" style={{ width: `${Math.round((live?.level ?? 0) * 100)}%` }} />
+                  <div
+                    className="level__fill"
+                    style={{
+                      width: `${Math.round((live?.level ?? 0) * 100)}%`,
+                    }}
+                  />
                 </div>
               </div>
               <p className={live?.match ? 'status-ok' : 'muted'}>{live ? (live.match ? '✓ Acorde reconhecido' : live.heard ? `Parece ${live.heard}` : 'Toca o acorde') : 'À escuta…'}</p>
+              {diagnostics && (
+                <dl className="diagnostics" aria-label="Diagnóstico do microfone">
+                  <div>
+                    <dt>Nível (RMS)</dt>
+                    <dd>
+                      {(live?.rms ?? 0).toFixed(4)} <span className="muted">· silêncio abaixo de {limits.voicedRms}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Semelhança com {current?.chord ?? '—'}</dt>
+                    <dd>
+                      {Math.round((live?.similarity ?? 0) * 100)}% <span className="muted">· mínimo {Math.round(limits.minSimilarity * 100)}%</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Soa mais a</dt>
+                    <dd>{live?.heard ?? '—'}</dd>
+                  </div>
+                  {mode === 'tempo' && tally && (
+                    <div>
+                      <dt>Este acorde</dt>
+                      <dd>
+                        {tally.matched} reconhecidos / {tally.voiced} com som / {tally.frames} leituras <span className="muted">· certo a partir de {Math.round(limits.hitRatio * 100)}%</span>
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              )}
               <p className="muted">
-                Certos: {verdicts.filter((v) => v === 'hit').length} · Sequência: {(() => {
+                Certos: {verdicts.filter((v) => v === 'hit').length} · Sequência:{' '}
+                {(() => {
                   let s = 0;
                   for (let i = verdicts.length - 1; i >= 0 && verdicts[i] === 'hit'; i--) s++;
                   return s;
@@ -456,7 +566,10 @@ export function PlayAlongPage({ songId }: { songId: string }) {
                   </li>
                 ))}
               </ul>
-              <p className="hint">O reconhecimento distingue bem acordes maiores, menores e de fundamental diferente; extensões (7, 7M, sus, 9) não são verificadas ao pormenor. Ruído e outros instrumentos baixam a pontuação.</p>
+              <p className="hint">
+                Se a avaliação te parecer injusta, muda a «Sensibilidade do microfone» ou liga o diagnóstico e diz-nos o que vês. O reconhecimento distingue bem acordes maiores, menores e de
+                fundamental diferente; extensões (7, 7M, sus, 9) não são verificadas ao pormenor. Ruído e outros instrumentos baixam a pontuação.
+              </p>
             </>
           ) : evaluated ? (
             <>

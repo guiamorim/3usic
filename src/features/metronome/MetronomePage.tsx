@@ -32,7 +32,16 @@ export function MetronomePage() {
 
   // Persist preferences (debounced) and stop + log practice time on leave.
   useEffect(() => {
-    const id = setTimeout(() => void saveSettings({ metronomeBpm: bpm, metronomeSignature: sigLabel, metronomeAccent: accent, metronomeVolume: volume }), 600);
+    const id = setTimeout(
+      () =>
+        void saveSettings({
+          metronomeBpm: bpm,
+          metronomeSignature: sigLabel,
+          metronomeAccent: accent,
+          metronomeVolume: volume,
+        }),
+      600,
+    );
     return () => clearTimeout(id);
     // saveSettings identity changes with every store update; we only react to the values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,7 +99,7 @@ export function MetronomePage() {
   const change = (delta: number) => setBpm((b) => clampBpm(b + delta));
 
   return (
-    <Page title="Metrónomo" back={{ href: '#/ferramentas', label: 'Ferramentas' }} subtitle="Começa devagar. Sobe o andamento só quando tocas sem erros três vezes seguidas.">
+    <Page title="Metrónomo" back={{ href: '#/ferramentas', label: 'Mais' }} subtitle="Começa devagar. Sobe o andamento só quando tocas sem erros três vezes seguidas.">
       {!isAudioSupported() && <p className="notice notice--error">Este navegador não suporta a Web Audio API; o metrónomo não pode tocar som.</p>}
       {error && (
         <p className="notice notice--error" role="alert">

@@ -17,7 +17,7 @@ export function ProgressPage() {
   const recent = [...data.attempts].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
 
   return (
-    <Page title="Progresso" back={{ href: '#/ferramentas', label: 'Ferramentas' }}>
+    <Page title="Progresso" back={{ href: '#/ferramentas', label: 'Mais' }}>
       <section className="card">
         <h2>Lições</h2>
         <p>

@@ -1,18 +1,36 @@
 import type { ReactNode } from 'react';
 import type { WakeLockState } from './wakeLock';
-import { IconBook, IconGrid, IconHome, IconMusic, IconStrum, IconTarget, IconTools } from '../components/Icons';
+import { IconBook, IconHome, IconMore, IconMusic, IconTarget } from '../components/Icons';
 
 const NAV = [
   { href: '#/', match: '', label: 'Início', Icon: IconHome },
   { href: '#/aprender', match: 'aprender', label: 'Aprender', Icon: IconBook },
-  { href: '#/praticar', match: 'praticar', label: 'Praticar', Icon: IconTarget },
+  {
+    href: '#/praticar',
+    match: 'praticar',
+    label: 'Praticar',
+    Icon: IconTarget,
+  },
   { href: '#/musicas', match: 'musicas', label: 'Músicas', Icon: IconMusic },
-  { href: '#/batidas', match: 'batidas', label: 'Batidas', Icon: IconStrum },
-  { href: '#/acordes', match: 'acordes', label: 'Acordes', Icon: IconGrid },
-  { href: '#/ferramentas', match: 'ferramentas', label: 'Mais', Icon: IconTools },
+  {
+    href: '#/ferramentas',
+    match: 'ferramentas',
+    label: 'Mais',
+    Icon: IconMore,
+  },
 ] as const;
 
-const TOOL_ROUTES = new Set(['ferramentas', 'afinador', 'metronomo', 'progresso', 'definicoes', 'dados', 'privacidade']);
+// Five tabs fit a phone; the other sections highlight the tab they live under.
+const PARENT_TAB: Record<string, string> = {
+  batidas: 'praticar',
+  acordes: 'ferramentas',
+  afinador: 'ferramentas',
+  metronomo: 'ferramentas',
+  progresso: 'ferramentas',
+  definicoes: 'ferramentas',
+  dados: 'ferramentas',
+  privacidade: 'ferramentas',
+};
 
 const AWAKE_HINT: Record<WakeLockState, string> = {
   on: 'Ecrã sempre ligado: ativo',
@@ -34,13 +52,17 @@ export function Layout({
   hideNav?: boolean;
   awake?: { enabled: boolean; state: WakeLockState; toggle(): void };
 }) {
-  const active = TOOL_ROUTES.has(section) ? 'ferramentas' : section;
+  const active = PARENT_TAB[section] ?? section;
   return (
-    <div className={hideNav ? "app app--no-nav" : "app"}>
-      <a className="skip-link" href="#conteudo" onClick={(e) => {
-        e.preventDefault();
-        document.getElementById('conteudo')?.focus();
-      }}>
+    <div className={hideNav ? 'app app--no-nav' : 'app'}>
+      <a
+        className="skip-link"
+        href="#conteudo"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('conteudo')?.focus();
+        }}
+      >
         Saltar para o conteúdo
       </a>
       <header className="app-header">
@@ -74,18 +96,18 @@ export function Layout({
         {children}
       </main>
       {!hideNav && (
-      <nav className="app-nav" aria-label="Navegação principal">
-        <ul>
-          {NAV.map(({ href, match, label, Icon }) => (
-            <li key={href}>
-              <a href={href} aria-current={active === match ? 'page' : undefined}>
-                <Icon />
-                <span>{label}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+        <nav className="app-nav" aria-label="Navegação principal">
+          <ul>
+            {NAV.map(({ href, match, label, Icon }) => (
+              <li key={href}>
+                <a href={href} aria-current={active === match ? 'page' : undefined}>
+                  <Icon />
+                  <span>{label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
     </div>
   );

@@ -362,8 +362,12 @@ test.describe('prática guiada', () => {
   test('separador Batidas: abre um padrão, toca e mostra o cursor', async ({ page }) => {
     await onboard(page);
     await expect(page.getByText('Como funciona?')).toBeVisible();
-    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Batidas', exact: true }).click();
+    // Five tabs only: Batidas lives under «Praticar» and is reachable from the home shortcuts and «Mais».
+    const nav = page.getByRole('navigation', { name: 'Navegação principal' });
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    await page.getByRole('navigation', { name: 'Atalhos' }).getByRole('link', { name: 'Batidas', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Batidas', level: 1 })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Praticar' })).toHaveAttribute('aria-current', 'page');
     await page.getByRole('link', { name: /Pop \/ folk/ }).click();
     await expect(page.getByRole('heading', { name: 'Pop / folk', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Tocar' }).click();
@@ -448,7 +452,9 @@ test.describe('modo guiado e ecrã ligado', () => {
     await bar.getByRole('button', { name: /Feito · seguinte/ }).click();
     await expect(bar).toContainText('passo 2 de');
     // Navigating inside the activity keeps the bar.
-    await page.getByRole('link', { name: 'Acordes', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Mais' }).click();
+    await page.getByRole('link', { name: /^Acordes/ }).click();
+    await expect(page.getByRole('heading', { name: 'Acordes', level: 1 })).toBeVisible();
     await expect(bar).toBeVisible();
     await bar.getByRole('button', { name: 'Sair do modo guiado' }).click();
     await expect(bar).toHaveCount(0);
@@ -504,5 +510,28 @@ test.describe('offline e PWA', () => {
     await page.goto('/#/praticar/ritmo');
     await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
     await context.setOffline(false);
+  });
+});
+
+test.describe('melhorias da revisão', () => {
+  test('um exercício interrompido continua onde ficou', async ({ page }) => {
+    await onboard(page);
+    await page.goto('/#/praticar/ritmo');
+    await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
+    await page.locator('.quiz__options .option').first().click();
+    await page.reload();
+    await expect(page.getByText(/Continuas onde ficaste: 1 de 8/)).toBeVisible();
+    await expect(page.getByText('Pergunta 2 de 8')).toBeVisible();
+    await page.getByRole('button', { name: 'Recomeçar' }).click();
+    await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
+  });
+
+  test('a página «Mais» reúne ferramentas, acordes e batidas', async ({ page }) => {
+    await onboard(page);
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Mais' }).click();
+    await expect(page.getByRole('heading', { name: 'Mais', level: 1 })).toBeVisible();
+    for (const name of ['Afinador', 'Metrónomo', 'Acordes', 'Batidas', 'Progresso', 'Dados e privacidade']) {
+      await expect(page.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
+    }
   });
 });

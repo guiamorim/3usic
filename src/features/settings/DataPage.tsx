@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useStore } from '../../app/store';
 import { Page } from '../../components/Page';
+import { localDay } from '../../domain/dates';
 import { exportFileName, MAX_IMPORT_BYTES, parseImport, serializeExport, type ImportResult } from '../../storage/exportImport';
 
 type Pending = Extract<ImportResult, { ok: true }>;
@@ -11,26 +12,36 @@ function formatBytes(n: number): string {
 }
 
 export function DataPage() {
-  const { data, storageKind, replaceAll, clearAll } = useStore();
-  const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const { data, storageKind, replaceAll, clearAll, saveSettings } = useStore();
+  const [message, setMessage] = useState<{
+    kind: 'ok' | 'error';
+    text: string;
+  } | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [confirmDelete, setConfirmDelete] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const [persisted, setPersisted] = useState<boolean | null>(null);
-  const [estimate, setEstimate] = useState<{ usage: number; quota: number } | null>(null);
+  const [estimate, setEstimate] = useState<{
+    usage: number;
+    quota: number;
+  } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const s = navigator.storage;
     if (!s) return;
-    s.persisted?.().then(setPersisted).catch(() => undefined);
+    s.persisted?.()
+      .then(setPersisted)
+      .catch(() => undefined);
     s.estimate?.()
       .then((e) => setEstimate({ usage: e.usage ?? 0, quota: e.quota ?? 0 }))
       .catch(() => undefined);
   }, []);
 
   function exportData() {
-    const blob = new Blob([serializeExport(data)], { type: 'application/json' });
+    const blob = new Blob([serializeExport(data)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -39,7 +50,11 @@ export function DataPage() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage({ kind: 'ok', text: 'Ficheiro exportado. Guarda-o num local seguro: contém o teu progresso.' });
+    void saveSettings({ lastExportDay: localDay() });
+    setMessage({
+      kind: 'ok',
+      text: 'Ficheiro exportado. Guarda-o num local seguro: contém o teu progresso.',
+    });
   }
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
@@ -48,7 +63,10 @@ export function DataPage() {
     setPending(null);
     if (!file) return;
     if (file.size > MAX_IMPORT_BYTES) {
-      setMessage({ kind: 'error', text: 'O ficheiro é demasiado grande (máximo 5 MB).' });
+      setMessage({
+        kind: 'error',
+        text: 'O ficheiro é demasiado grande (máximo 5 MB).',
+      });
       return;
     }
     let text: string;
@@ -71,7 +89,14 @@ export function DataPage() {
     if (!pending) return;
     const ok = await replaceAll(pending.file.data);
     setPending(null);
-    setMessage(ok ? { kind: 'ok', text: 'Dados importados com sucesso.' } : { kind: 'error', text: 'A importação falhou. Os teus dados anteriores não foram alterados.' });
+    setMessage(
+      ok
+        ? { kind: 'ok', text: 'Dados importados com sucesso.' }
+        : {
+            kind: 'error',
+            text: 'A importação falhou. Os teus dados anteriores não foram alterados.',
+          },
+    );
   }
 
   async function deleteAll() {
@@ -86,16 +111,29 @@ export function DataPage() {
     try {
       const granted = await navigator.storage?.persist?.();
       setPersisted(!!granted);
-      setMessage(granted ? { kind: 'ok', text: 'O navegador vai proteger estes dados da limpeza automática.' } : { kind: 'error', text: 'O navegador não concedeu armazenamento persistente. Exporta os dados regularmente.' });
+      setMessage(
+        granted
+          ? {
+              kind: 'ok',
+              text: 'O navegador vai proteger estes dados da limpeza automática.',
+            }
+          : {
+              kind: 'error',
+              text: 'O navegador não concedeu armazenamento persistente. Exporta os dados regularmente.',
+            },
+      );
     } catch {
-      setMessage({ kind: 'error', text: 'Este navegador não suporta armazenamento persistente.' });
+      setMessage({
+        kind: 'error',
+        text: 'Este navegador não suporta armazenamento persistente.',
+      });
     }
   }
 
   const minutes = Math.round(data.practice.reduce((s, p) => s + p.seconds, 0) / 60);
 
   return (
-    <Page title="Dados e privacidade" back={{ href: '#/ferramentas', label: 'Ferramentas' }}>
+    <Page title="Dados e privacidade" back={{ href: '#/ferramentas', label: 'Mais' }}>
       {message && (
         <p className={`notice notice--${message.kind === 'ok' ? 'success' : 'error'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>
           {message.text}
@@ -104,14 +142,14 @@ export function DataPage() {
 
       <section className="card">
         <h2>O que está guardado</h2>
-        <p>
-          Os teus dados ficam apenas neste navegador, neste dispositivo ({storageKind === 'indexeddb' ? 'IndexedDB' : 'memória temporária'}). Não há contas, servidores nem sincronização.
-        </p>
+        <p>Os teus dados ficam apenas neste navegador, neste dispositivo ({storageKind === 'indexeddb' ? 'IndexedDB' : 'memória temporária'}). Não há contas, servidores nem sincronização.</p>
         <ul>
           <li>Perfil: {data.profile ? 'sim (instrumento, nível, objetivos, disponibilidade)' : 'não'}</li>
           <li>Lições concluídas: {data.lessons.length}</li>
           <li>Resultados de exercícios: {data.attempts.length}</li>
-          <li>Registos de prática: {data.practice.length} ({minutes} min)</li>
+          <li>
+            Registos de prática: {data.practice.length} ({minutes} min)
+          </li>
           <li>Mudanças de acordes: {data.chordChanges.length}</li>
         </ul>
         {estimate && estimate.quota > 0 && (
@@ -119,10 +157,7 @@ export function DataPage() {
             Espaço usado por esta aplicação (inclui ficheiros em cache): {formatBytes(estimate.usage)} de {formatBytes(estimate.quota)} disponíveis.
           </p>
         )}
-        <p>
-          Proteção contra limpeza automática:{' '}
-          {persisted === null ? 'desconhecida' : persisted ? <strong>ativa</strong> : <strong>não ativa</strong>}
-        </p>
+        <p>Proteção contra limpeza automática: {persisted === null ? 'desconhecida' : persisted ? <strong>ativa</strong> : <strong>não ativa</strong>}</p>
         {persisted === false && (
           <button type="button" className="btn btn--secondary" onClick={() => void requestPersist()}>
             Pedir armazenamento persistente
@@ -150,7 +185,8 @@ export function DataPage() {
           <div className="confirm" role="group" aria-labelledby="import-confirm-title">
             <h3 id="import-confirm-title">Substituir os dados atuais?</h3>
             <p>
-              Ficheiro exportado em {new Date(pending.summary.exportedAt).toLocaleString('pt-PT')}: {pending.summary.lessons} lições concluídas, {pending.summary.attempts} resultados, {pending.summary.practiceMinutes} min de prática, {pending.summary.songs} músicas importadas
+              Ficheiro exportado em {new Date(pending.summary.exportedAt).toLocaleString('pt-PT')}: {pending.summary.lessons} lições concluídas, {pending.summary.attempts} resultados,{' '}
+              {pending.summary.practiceMinutes} min de prática, {pending.summary.songs} músicas importadas
               {pending.summary.hasProfile ? ', perfil incluído' : ''}.
             </p>
             <p>
@@ -214,7 +250,8 @@ export function DataPage() {
           <li>Os dados guardados são os mínimos para o funcionamento: preferências e progresso.</li>
         </ul>
         <p className="hint">
-          Como os dados nunca saem do dispositivo, o responsável pela aplicação não tem acesso a eles. Se a aplicação for publicada num servidor, o fornecedor de alojamento pode registar dados técnicos de acesso (por exemplo, endereço IP) — ver a documentação do projeto. Esta informação não constitui uma avaliação jurídica de conformidade com o RGPD.
+          Como os dados nunca saem do dispositivo, o responsável pela aplicação não tem acesso a eles. Se a aplicação for publicada num servidor, o fornecedor de alojamento pode registar dados
+          técnicos de acesso (por exemplo, endereço IP) — ver a documentação do projeto. Esta informação não constitui uma avaliação jurídica de conformidade com o RGPD.
         </p>
       </section>
     </Page>

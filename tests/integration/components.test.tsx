@@ -9,7 +9,13 @@ import { App } from '../../src/app/App';
 import { MemoryStorage } from '../../src/storage/db';
 import type { Question } from '../../src/domain/exercises';
 
-vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefresh: [false, vi.fn()], offlineReady: [false, vi.fn()], updateServiceWorker: vi.fn() }) }));
+vi.mock('virtual:pwa-register/react', () => ({
+  useRegisterSW: () => ({
+    needRefresh: [false, vi.fn()],
+    offlineReady: [false, vi.fn()],
+    updateServiceWorker: vi.fn(),
+  }),
+}));
 
 describe('ChordDiagram', () => {
   it('tem uma descrição acessível corda a corda', () => {
@@ -27,12 +33,27 @@ describe('ChordDiagram', () => {
 });
 
 describe('QuizRunner', () => {
-  const q = (id: string, answer: string): Question => ({ id, prompt: `Pergunta ${id}`, visual: { kind: 'none' }, options: ['A', 'B', 'C'], answer, explanation: 'Porque sim, com detalhe.' });
+  const q = (id: string, answer: string): Question => ({
+    id,
+    prompt: `Pergunta ${id}`,
+    visual: { kind: 'none' },
+    options: ['A', 'B', 'C'],
+    answer,
+    explanation: 'Porque sim, com detalhe.',
+  });
 
   it('dá feedback e agrega resultados por competência', async () => {
     const user = userEvent.setup();
     const onFinish = vi.fn();
-    render(<QuizRunner items={[{ question: q('1', 'A'), skillId: 's1' }, { question: q('2', 'B'), skillId: 's2' }]} onFinish={onFinish} />);
+    render(
+      <QuizRunner
+        items={[
+          { question: q('1', 'A'), skillId: 's1' },
+          { question: q('2', 'B'), skillId: 's2' },
+        ]}
+        onFinish={onFinish}
+      />,
+    );
     await user.click(screen.getByRole('button', { name: 'A' }));
     expect(screen.getByText('Certo!')).toBeInTheDocument();
     // Answers are locked after choosing.
@@ -85,5 +106,56 @@ describe('App', () => {
     expect(screen.getByText(/Módulo 3/)).toBeInTheDocument();
     const saved = await storage.loadAll();
     expect(saved.data.profile?.instrument).toBe('electric');
+  });
+});
+
+describe('ErrorBoundary', () => {
+  it('mostra um ecrã de recuperação em vez de deixar a app em branco', async () => {
+    const { ErrorBoundary } = await import('../../src/app/ErrorBoundary');
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    function Boom(): never {
+      throw new Error('falha de teste');
+    }
+    render(
+      <StoreProvider storage={new MemoryStorage()}>
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>
+      </StoreProvider>,
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Algo correu mal neste ecrã',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exportar dados' })).toBeInTheDocument();
+    spy.mockRestore();
+  });
+});
+
+describe('QuizRunner (retomar)', () => {
+  const q = (id: string, answer: string): Question => ({
+    id,
+    prompt: `Pergunta ${id}`,
+    visual: { kind: 'none' },
+    options: ['A', 'B', 'C'],
+    answer,
+    explanation: 'Porque sim, com detalhe.',
+  });
+
+  it('continua na pergunta seguinte às já respondidas e guarda o progresso', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const onProgress = vi.fn();
+    const items = [q('1', 'A'), q('2', 'B'), q('3', 'C')].map((question) => ({
+      question,
+      skillId: 's1',
+    }));
+    render(<QuizRunner items={items} resume={{ answers: [true, false], elapsedSec: 30 }} onProgress={onProgress} onFinish={onFinish} />);
+    expect(screen.getByText('Pergunta 3 de 3')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'C' }));
+    expect(onProgress).toHaveBeenCalledWith([true, false, true], expect.any(Number));
+    await user.click(screen.getByRole('button', { name: 'Ver resultado' }));
+    expect(onFinish).toHaveBeenCalledWith([{ skillId: 's1', correct: 2, total: 3 }], expect.any(Number));
   });
 });

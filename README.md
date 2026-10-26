@@ -45,12 +45,13 @@ Em Chrome/Edge (Android, Windows, macOS, Linux): menu → «Instalar aplicação
 - O afinador foi testado com sinais sintéticos e com o microfone simulado do Chromium, **não** com microfones reais em vários dispositivos.
 - Instalação PWA não foi testada em dispositivos iOS/Android reais.
 - Acessibilidade verificada com axe (0 violações nas páginas testadas); não houve teste com leitores de ecrã reais.
-- O progresso vive no navegador: limpar dados do site apaga-o. Exporta regularmente.
+- O progresso vive no navegador: limpar dados do site apaga-o. A app pede armazenamento persistente (o navegador decide se concede) e lembra de exportar a cada 14 dias.
 - O metrónomo pode atrasar ou parar em segundo plano/ecrã bloqueado (comportamento dos navegadores).
 - Afinador por cordas em afinação padrão; outras afinações pelo modo cromático. Sem gravação de áudio; sem sincronização entre dispositivos.
-- Tocar junto: o reconhecimento de acordes foi validado com sinais sintéticos e com o microfone simulado do Chromium, não com guitarras reais. Distingue tríades maiores/menores e fundamentais diferentes; não verifica extensões (7, 7M, sus, 9) nem o ritmo da batida. A gravação original não é reproduzida (direitos de autor).
+- Tocar junto: o reconhecimento de acordes foi validado com sinais sintéticos e com o microfone simulado do Chromium, não com guitarras reais. Distingue tríades maiores/menores e fundamentais diferentes; não verifica extensões (7, 7M, sus, 9) nem o ritmo da batida. Há três níveis de sensibilidade e um painel de diagnóstico para ajustar no aparelho.
+- Avaliação de ritmo (Batidas): deteta os ataques dos golpes pelo microfone e desconta o atraso médio do aparelho, por isso mede a regularidade e a tendência (acelerar/atrasar), não se o aluno toca sempre adiantado ou atrasado. Golpes para cima suaves podem não ser detetados; o clique do metrónomo pelo altifalante pode interferir (recomenda-se auscultadores). Não testado com guitarras reais. A gravação original não é reproduzida (direitos de autor).
 - A correção do som no iPhone (interruptor de silêncio, modo de áudio) usa `navigator.audioSession` (Safari 17+) e um truque de reprodução silenciosa para versões anteriores; não foi testada num iPhone real.
-- Acordes do catálogo: 40 músicas foram conferidas em cifras.com.br (cifras feitas por utilizadores, não oficiais); as restantes músicas famosas foram escritas de memória e estão assinaladas na app como «ainda não conferidos». Tom e andamento são aproximados. Confirma com a gravação.
+- Acordes do catálogo: 68 músicas foram conferidas em cifras.com.br (cifras feitas por utilizadores, não oficiais); 4 (Hallelujah, Sweet Home Chicago, The Thrill Is Gone, Garota de Ipanema) foram escritas de memória e estão assinaladas na app como «ainda não conferidos». Tom e andamento são aproximados. Confirma com a gravação.
 - Acordes diminutos e aumentados da versão original não têm diagrama; a versão simplificada omite-os.
 - O parser de texto simples depende do alinhamento por espaços; cifras com tabulações ou fontes proporcionais podem ficar desalinhadas (os acordes continuam a ser lidos).
 - Conclusão de lições é autoavaliada (caixa de confirmação); o domínio é medido pelos exercícios.
