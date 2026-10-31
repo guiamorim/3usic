@@ -143,11 +143,13 @@ export function MetronomePage() {
           <button type="button" className="btn btn--primary btn--large" onClick={() => void toggle()} disabled={!isAudioSupported()}>
             {running ? 'Pausar' : 'Iniciar'}
           </button>
-          <button type="button" className="btn btn--secondary" onClick={restart} disabled={!running}>
-            Reiniciar
-          </button>
+          {running && (
+            <button type="button" className="btn btn--secondary" onClick={restart}>
+              Reiniciar
+            </button>
+          )}
           <button type="button" className="btn btn--secondary" onClick={tap}>
-            Marcar andamento (tap)
+            Bater o andamento
           </button>
         </div>
         <div className="metronome__options">

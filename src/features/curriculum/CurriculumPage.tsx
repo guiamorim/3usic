@@ -8,7 +8,7 @@ export const STATUS_LABEL: Record<LessonStatus, string> = {
   concluida: 'Concluída',
   recomendada: 'Recomendada',
   disponivel: 'Disponível',
-  'falta-base': 'Rever bases primeiro',
+  'falta-base': 'Mais à frente',
   opcional: 'Opcional para o teu nível',
 };
 

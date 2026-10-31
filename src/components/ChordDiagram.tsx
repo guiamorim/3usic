@@ -85,9 +85,11 @@ export function ChordDiagram({ chord, size = 'md', showFingers = true }: Props) 
           </g>
         );
       })}
-      <text x={left + gridW / 2} y={h - 4} className="cd-strings" textAnchor="middle">
-        E A D G B E
-      </text>
+      {['E', 'A', 'D', 'G', 'B', 'E'].map((name, i) => (
+        <text key={`s${i}`} x={xOf(i)} y={h - 4} className="cd-strings" textAnchor="middle">
+          {name}
+        </text>
+      ))}
     </svg>
   );
 }
