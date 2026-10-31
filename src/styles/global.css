@@ -2079,12 +2079,13 @@ table {
 .data-table,
 .bars {
   width: 100%;
-  table-layout: fixed;
 }
+/* Auto layout sizes columns by content, so headers never split mid-word; long words still wrap at hyphens. */
 .data-table th,
 .data-table td,
 .bars td {
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  hyphens: auto;
 }
 .bpm {
   gap: clamp(0.15rem, 1.2vw, 0.4rem);
