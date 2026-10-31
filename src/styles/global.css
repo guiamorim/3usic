@@ -2166,7 +2166,20 @@ table {
 }
 .brand > span {
   min-width: 0;
-  overflow-wrap: anywhere;
+}
+@media (min-width: 900px) {
+  /* Sidebar header (200 px): name on one line, «Ecrã ligado» below it, nav starts after both. */
+  .app-header {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+  .brand {
+    font-size: 0.98rem;
+    white-space: nowrap;
+  }
+  .app-nav {
+    padding-top: 7.5rem;
+  }
 }
 .brand > svg,
 .app-header .awake-toggle {
