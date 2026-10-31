@@ -15,6 +15,7 @@ import { takeRestore } from '../../app/navTrail';
 import { LOG_ON_CHECK, useTodayPlan } from '../../app/useTodayPlan';
 import { backupDue } from '../../domain/backup';
 import { addDays } from '../../domain/dates';
+import { InstallHint } from '../../app/InstallHint';
 
 // SVG line icons (same set as the navigation): emoji look different on every phone.
 const BLOCK_ICON: Record<BlockKind, ComponentType> = {
@@ -68,7 +69,7 @@ export function DashboardPage() {
   const { plan, done, completion, recommended, target, today } = useTodayPlan();
   const h1 = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    document.title = 'Hoje · Braço';
+    document.title = 'Hoje · Chords Dominator';
     h1.current?.focus({ preventScroll: true });
     window.scrollTo({ top: takeRestore() ?? 0 });
     // Back on «Início»: guided mode ends.
@@ -110,6 +111,8 @@ export function DashboardPage() {
           </a>
         )}
       </section>
+
+      <InstallHint />
 
       {showBackup && (
         <section className="card card--warn" aria-labelledby="backup-title">

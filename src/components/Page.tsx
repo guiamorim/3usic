@@ -18,7 +18,7 @@ export function Page({ title, subtitle, back: fallback, children }: Props) {
   const [origin] = useState(previousEntry);
   const back = fallback && origin ? { href: origin.hash, label: origin.title || fallback.label } : fallback;
   useEffect(() => {
-    document.title = `${title} · Braço`;
+    document.title = `${title} · Chords Dominator`;
     h1.current?.focus({ preventScroll: true });
     const y = takeRestore();
     window.scrollTo({ top: y ?? 0 });

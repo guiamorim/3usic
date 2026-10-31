@@ -66,12 +66,12 @@ export function Layout({
         Saltar para o conteúdo
       </a>
       <header className="app-header">
-        <a href="#/" className="brand" aria-label="Braço — início">
+        <a href="#/" className="brand" aria-label="Chords Dominator — início">
           <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
             <rect width="32" height="32" rx="8" className="brand__bg" />
             <path d="M9 8v16M14 8v16M19 8v16M24 8v16M7 12h19M7 17h19" className="brand__lines" />
           </svg>
-          <span>Braço</span>
+          <span>Chords Dominator</span>
         </a>
         {awake && !hideNav && (
           <button

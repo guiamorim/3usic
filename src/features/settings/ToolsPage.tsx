@@ -78,7 +78,7 @@ export function ToolsPage() {
           </li>
         ))}
       </ul>
-      <p className="hint">Braço · versão {__APP_VERSION__} · funciona offline depois do primeiro carregamento.</p>
+      <p className="hint">Chords Dominator · versão {__APP_VERSION__} · funciona offline depois do primeiro carregamento.</p>
     </Page>
   );
 }

@@ -79,7 +79,7 @@ describe('App', () => {
         <App />
       </StoreProvider>,
     );
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bem-vindo ao Braço' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bem-vindo ao Chords Dominator' })).toBeInTheDocument());
     expect(screen.getByRole('alert')).toHaveTextContent('O progresso perde-se ao fechar a página');
   });
 
@@ -91,7 +91,7 @@ describe('App', () => {
         <App />
       </StoreProvider>,
     );
-    await screen.findByRole('heading', { name: 'Bem-vindo ao Braço' });
+    await screen.findByRole('heading', { name: 'Bem-vindo ao Chords Dominator' });
     await user.click(screen.getByLabelText('Guitarra elétrica'));
     await user.click(screen.getByRole('button', { name: 'Seguinte' }));
     await user.click(screen.getByLabelText(/Já sei alguns acordes/));

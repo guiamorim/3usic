@@ -373,7 +373,7 @@ Com o [G7]berro, rro-rro, que o gato [C]deu: miau!
   {
     id: 'blues-em-la', origin: 'outro',
     title: 'Blues em Lá (exercício)',
-    artist: 'Braço (original)',
+    artist: 'Chords Dominator (original)',
     year: 2026,
     genre: 'blues',
     key: 'A',
@@ -383,7 +383,7 @@ Com o [G7]berro, rro-rro, que o gato [C]deu: miau!
     strum: 'Shuffle: ↓ · ↓ ↑ ↓ · ↓ ↑ (colcheias «balançadas»)',
     note: 'Peça original para treinar a forma de blues de 12 compassos.',
     chordpro: `{title: Blues em Lá (exercício)}
-{artist: Braço (original)}
+{artist: Chords Dominator (original)}
 {key: A}
 {tempo: 80}
 {time: 4/4}

@@ -1,4 +1,4 @@
-# Braço — aprender guitarra e violão
+# Chords Dominator — aprender guitarra e violão
 
 PWA para aprender guitarra elétrica, guitarra acústica e violão (aço ou nylon). Funciona offline depois do primeiro carregamento, não pede conta e guarda o progresso apenas no dispositivo.
 
@@ -62,3 +62,10 @@ Em Chrome/Edge (Android, Windows, macOS, Linux): menu → «Instalar aplicação
 
 ## Licenças de conteúdo
 Lições, exercícios, riffs e textos são originais deste projeto. A «Ode à Alegria» (Beethoven) é domínio público. As músicas completas do catálogo são de domínio público (letras tradicionais ou de autores falecidos há mais de 70 anos) com harmonizações escritas para este projeto; das músicas protegidas só se incluem título, artista, ano e progressão de acordes. Ver [ADR 0006](docs/decisions/0006-musicas-e-direitos.md).
+
+## Dispositivos suportados
+
+- **Forma recomendada de usar no telemóvel:** instalar no ecrã principal e abrir sempre pelo ícone (o Início mostra os passos quando a app é aberta num separador do navegador).
+- **iPhone/iPad:** suportamos as duas versões principais mais recentes do iOS/iPadOS (a atual e a anterior), que é a política mais comum em apps para iOS. O código é compilado para ES2022 (Safari 15.4+), por isso versões um pouco mais antigas devem abrir, mas não são testadas. «Ecrã ligado» numa app instalada no ecrã principal precisa do iOS 18.4 ou posterior.
+- **Android:** Chrome atual (testado automaticamente com o perfil Pixel 7 do Playwright).
+- No iPhone, os dados guardados no Safari e na app instalada são separados: para passar o progresso, usar Exportar/Importar em «Dados».

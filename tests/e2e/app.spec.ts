@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 async function onboard(page: Page, opts: { instrument?: string } = {}) {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Bem-vindo ao Braço' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao Chords Dominator' })).toBeVisible();
   if (opts.instrument) await page.getByLabel(opts.instrument).check();
   await page.getByRole('button', { name: 'Seguinte' }).click();
   await page.getByLabel('Nunca toquei').check();
@@ -222,7 +222,7 @@ test.describe('dados', () => {
     await expect(del).toBeDisabled();
     await page.getByLabel(/Para confirmar, escreve/).fill('apagar');
     await del.click();
-    await expect(page.getByRole('heading', { name: 'Bem-vindo ao Braço' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bem-vindo ao Chords Dominator' })).toBeVisible();
 
     // Restore from the exported file, via the onboarding link.
     await page.getByRole('link', { name: 'Importar ficheiro' }).click();
@@ -500,7 +500,7 @@ test.describe('offline e PWA', () => {
   test('manifest válido e funcionamento offline após o primeiro carregamento', async ({ page, context }) => {
     await page.goto('/');
     const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-    expect(manifest.name).toContain('Braço');
+    expect(manifest.name).toContain('Chords Dominator');
     expect(manifest.display).toBe('standalone');
     expect(manifest.icons.some((i: { sizes: string }) => i.sizes === '512x512')).toBe(true);
 
@@ -626,5 +626,24 @@ test('responsividade: nada transborda a 320 px com texto aumentado', async ({ br
       expect(issues, `#/${r} @ ${fs}`).toEqual([]);
     }
   }
+  await ctx.close();
+});
+
+test('no iPhone, recomenda instalar no ecrã principal e o aviso pode ser escondido', async ({ browser }) => {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
+  });
+  const page = await ctx.newPage();
+  await onboard(page);
+  const hint = page.getByRole('region', { name: 'Instala a app no ecrã principal' });
+  await expect(hint).toContainText('Adicionar ao ecrã principal');
+  await hint.getByRole('button', { name: /não mostrar/ }).click();
+  await expect(hint).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Instala a app no ecrã principal' })).toHaveCount(0);
   await ctx.close();
 });

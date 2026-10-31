@@ -46,8 +46,8 @@ export default defineConfig({
       includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         id: './',
-        name: 'Braço — Aprender guitarra e violão',
-        short_name: 'Braço',
+        name: 'Chords Dominator — Aprender guitarra e violão',
+        short_name: 'Chords Dominator',
         description: 'Aprender guitarra e violão com lições, exercícios, afinador e metrónomo. Funciona offline e guarda o progresso no dispositivo.',
         lang: 'pt-PT',
         start_url: './',
