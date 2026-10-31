@@ -11,6 +11,7 @@ Ver README → Funcionalidades.
 5. Reduzir o bundle (avaliar `zod/mini`, divisão por rotas).
 
 ## Implementado depois do MVP
+- Alterações de 2026-10-31: «Ecrã ligado» volta a pedir o bloqueio ao primeiro toque e após o sistema o libertar, com aviso se o telemóvel recusar; som das notas do afinador por síntese de corda dedilhada (Karplus-Strong) com opção de repetir; «← voltar» regressa ao ecrã de origem na mesma posição (`app/navTrail.ts`) e «Voltar ao passo» na barra do modo guiado; correções de responsividade (botões a 320 px com texto até 150%).
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
 - Secção «Infantis e festas» em Músicas (2026-10-26): 17 cantigas tradicionais do Brasil e de Portugal com letra (domínio público) e harmonização própria; «Parabéns a você» nas versões BR e PT só com acordes (letra com autoria identificada/incerta).
 - Melhorias da revisão (2026-10-26): pedido automático de armazenamento persistente e lembrete de cópia a cada 14 dias, ecrã de erro por página, ecrãs carregados a pedido e `zod/mini` (arranque 552 → 377 KB), navegação com 5 separadores + «Mais», ícones SVG, tokens de raio/tipo, retomar exercício interrompido, sensibilidade e diagnóstico do microfone no Tocar junto, avaliação de ritmo nas Batidas, 28 músicas conferidas.

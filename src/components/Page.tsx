@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { previousEntry, takeRestore } from '../app/navTrail';
 
 interface Props {
   title: string;
@@ -7,13 +8,20 @@ interface Props {
   children: ReactNode;
 }
 
-/** Page shell: sets the document title and moves focus to the heading on navigation. */
-export function Page({ title, subtitle, back, children }: Props) {
+/**
+ * Page shell: sets the document title, moves focus to the heading on navigation and restores the
+ * scroll position when coming back. «← voltar» goes to the screen the user came from, if any.
+ */
+export function Page({ title, subtitle, back: fallback, children }: Props) {
   const h1 = useRef<HTMLHeadingElement>(null);
+  // Read once per screen: the trail changes as soon as the user navigates away.
+  const [origin] = useState(previousEntry);
+  const back = fallback && origin ? { href: origin.hash, label: origin.title || fallback.label } : fallback;
   useEffect(() => {
     document.title = `${title} · Braço`;
     h1.current?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0 });
+    const y = takeRestore();
+    window.scrollTo({ top: y ?? 0 });
   }, [title]);
   return (
     <>

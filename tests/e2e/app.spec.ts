@@ -134,7 +134,10 @@ test.describe('metrónomo', () => {
     // Visual pulse advances through the bar.
     const seen = new Set<string>();
     for (let i = 0; i < 15; i++) {
-      const t = await page.locator('.beat--on').textContent().catch(() => null);
+      const t = await page
+        .locator('.beat--on')
+        .textContent()
+        .catch(() => null);
       if (t) seen.add(t);
       await page.waitForTimeout(100);
     }
@@ -302,9 +305,9 @@ test.describe('músicas', () => {
     });
     await onboard(page);
     await page.goto('/#/musicas/importar');
-    await page.getByLabel('Ou cola aqui a cifra').fill(
-      ['Canção de Teste - Banda X', 'Tom: G', '', '[Refrão]', 'G         D', 'Uma linha <script>alert(1)</script>', 'Em        C', 'Outra linha da letra'].join('\n'),
-    );
+    await page
+      .getByLabel('Ou cola aqui a cifra')
+      .fill(['Canção de Teste - Banda X', 'Tom: G', '', '[Refrão]', 'G         D', 'Uma linha <script>alert(1)</script>', 'Em        C', 'Outra linha da letra'].join('\n'));
     await page.getByRole('button', { name: 'Pré-visualizar' }).click();
     await expect(page.getByText('Lido como texto simples. 4 acordes diferentes: G, D, Em, C.')).toBeVisible();
     await expect(page.getByLabel('Título')).toHaveValue('Canção de Teste');
@@ -436,7 +439,12 @@ test.describe('prática guiada', () => {
     await page.getByRole('button', { name: 'Guardar música' }).click();
     await expect(page.getByRole('heading', { name: 'Tempo Perdido', level: 1 })).toBeVisible();
     await expect(page.getByText('A tua cifra, guardada só neste dispositivo.')).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Letra e cifra completa' }).or(page.locator('section').filter({ hasText: 'A tua cifra' })).first()).toContainText('ste da minha cifra');
+    await expect(
+      page
+        .getByRole('region', { name: 'Letra e cifra completa' })
+        .or(page.locator('section').filter({ hasText: 'A tua cifra' }))
+        .first(),
+    ).toContainText('ste da minha cifra');
     await expect(page.getByRole('link', { name: 'Tocar junto (com a letra)' })).toBeVisible();
     expect(external).toEqual([]);
   });
@@ -456,6 +464,10 @@ test.describe('modo guiado e ecrã ligado', () => {
     await page.getByRole('link', { name: /^Acordes/ }).click();
     await expect(page.getByRole('heading', { name: 'Acordes', level: 1 })).toBeVisible();
     await expect(bar).toBeVisible();
+    // Away from the step: one tap brings the user back to it.
+    await bar.getByRole('link', { name: 'Voltar ao passo' }).click();
+    await expect(page.getByRole('heading', { name: 'Acordes', level: 1 })).toHaveCount(0);
+    await expect(bar.getByRole('link', { name: 'Voltar ao passo' })).toHaveCount(0);
     await bar.getByRole('button', { name: 'Sair do modo guiado' }).click();
     await expect(bar).toHaveCount(0);
     await page.getByRole('link', { name: 'Início', exact: true }).click();
@@ -544,6 +556,75 @@ test('secção de canções infantis e Parabéns', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Parabéns a Você \(versão portuguesa\)/ })).toBeVisible();
   await page.getByRole('link', { name: /Ciranda, Cirandinha/ }).click();
   await expect(page.getByText('vamos todos ciran', { exact: false }).first()).toBeVisible();
-  await page.getByRole('link', { name: 'Infantis e festas' }).click();
+  // Back returns to the kids section, not to the full list.
+  await page.getByRole('link', { name: /^← / }).click();
   await expect(page.getByRole('button', { name: 'Infantis e festas' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('voltar regressa ao ecrã de origem, na mesma posição', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('link', { name: /Começar lição/ }).click();
+  const lesson = 'Partes do instrumento e nomes das cordas';
+  await expect(page.getByRole('heading', { name: lesson, level: 1 })).toBeVisible();
+  const exercise = page.getByRole('link', { name: /Exercício: Nomes das cordas/ });
+  await exercise.scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(0);
+  await exercise.click();
+  await expect(page.getByText('Pergunta 1 de 8')).toBeVisible();
+  // The back link names the screen the user came from and returns to the same scroll position.
+  await page.getByRole('link', { name: `← ${lesson}` }).click();
+  await expect(page.getByRole('heading', { name: lesson, level: 1 })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(y - 40);
+});
+
+test('responsividade: nada transborda a 320 px com texto aumentado', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({ viewport: { width: 320, height: 720 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await onboard(page);
+  const routes = [
+    '',
+    'aprender',
+    'aprender/l1-1',
+    'praticar',
+    'praticar/mudancas',
+    'musicas',
+    'musicas/wonderwall',
+    'musicas/wonderwall/tocar',
+    'musicas/importar',
+    'batidas',
+    'batidas/pop-folk',
+    'acordes',
+    'acordes/G',
+    'afinador',
+    'metronomo',
+    'progresso',
+    'ferramentas',
+    'definicoes',
+    'dados',
+  ];
+  for (const fs of ['100%', '130%']) {
+    for (const r of routes) {
+      await page.evaluate((h) => (location.hash = '#/' + h), r);
+      await page.waitForTimeout(300);
+      // CSP forbids injected <style>; an inline style property on <html> is allowed.
+      await page.evaluate((size) => document.documentElement.style.setProperty('font-size', size, 'important'), fs);
+      const issues = await page.evaluate(() => {
+        const out: string[] = [];
+        const w = document.documentElement.clientWidth;
+        if (document.documentElement.scrollWidth > w + 1) out.push(`página ${document.documentElement.scrollWidth} > ${w}`);
+        for (const el of document.querySelectorAll<HTMLElement>('button, .btn, .chip, select, .option')) {
+          const box = el.getBoundingClientRect();
+          if (box.width === 0) continue;
+          const name = (el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30);
+          if (el.scrollWidth > el.clientWidth + 2) out.push(`conteúdo maior que o botão: ${name}`);
+          if (box.right > w + 1) out.push(`fora do ecrã: ${name}`);
+        }
+        return out;
+      });
+      expect(issues, `#/${r} @ ${fs}`).toEqual([]);
+    }
+  }
+  await ctx.close();
 });

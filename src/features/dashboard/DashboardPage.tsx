@@ -11,6 +11,7 @@ import { LESSONS, MODULES } from '../../content/curriculum';
 import { INSTRUMENT_LABEL } from '../../content/labels';
 import { href } from '../../app/router';
 import { setPlanStep } from '../../app/planFlow';
+import { takeRestore } from '../../app/navTrail';
 import { LOG_ON_CHECK, useTodayPlan } from '../../app/useTodayPlan';
 import { backupDue } from '../../domain/backup';
 import { addDays } from '../../domain/dates';
@@ -69,7 +70,7 @@ export function DashboardPage() {
   useEffect(() => {
     document.title = 'Hoje · Braço';
     h1.current?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: takeRestore() ?? 0 });
     // Back on «Início»: guided mode ends.
     setPlanStep(null);
   }, []);

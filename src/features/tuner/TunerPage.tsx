@@ -65,6 +65,24 @@ export function TunerPage() {
   const [status, setStatus] = useState<TunerStatus>({ state: 'idle' });
   const [history, setHistory] = useState<(number | null)[]>(() => Array<number | null>(HISTORY).fill(null));
   const [announcement, setAnnouncement] = useState('');
+  const [repeat, setRepeat] = useState(false);
+  const [looping, setLooping] = useState<number | null>(null);
+
+  // «Repetir»: the reference string rings again every 4 s until stopped (hands stay on the pegs).
+  useEffect(() => {
+    if (looping === null) return;
+    const id = setInterval(() => void playReference(looping, a4).catch(() => undefined), 4000);
+    return () => clearInterval(id);
+  }, [looping, a4]);
+
+  function reference(midi: number) {
+    if (looping === midi) {
+      setLooping(null);
+      return;
+    }
+    void playReference(midi, a4).catch(() => undefined);
+    setLooping(repeat ? midi : null);
+  }
   const tunerRef = useRef<Tuner | null>(null);
   const lastAnnounced = useRef('');
   const support = tunerSupport();
@@ -210,13 +228,32 @@ export function TunerPage() {
         <h2>Afinar de ouvido</h2>
         <p>Toca o som de referência e a corda ao mesmo tempo. Ajusta até deixares de ouvir «ondulação» entre os dois sons.</p>
         {isAudioSupported() ? (
-          <div className="reference-grid">
-            {STANDARD_TUNING.map((s) => (
-              <button key={s.number} type="button" className="btn btn--secondary" onClick={() => void playReference(s.openMidi, a4).catch(() => undefined)}>
-                {s.number}.ª · {s.pitchClass} ({SOLFEGE[s.pitchClass]})
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="reference-grid">
+              {STANDARD_TUNING.map((s) => (
+                <button
+                  key={s.number}
+                  type="button"
+                  className={looping === s.openMidi ? 'btn btn--primary' : 'btn btn--secondary'}
+                  aria-pressed={looping === s.openMidi}
+                  onClick={() => reference(s.openMidi)}
+                >
+                  {s.number}.ª · {s.pitchClass} ({SOLFEGE[s.pitchClass]})
+                </button>
+              ))}
+            </div>
+            <label className="chip">
+              <input
+                type="checkbox"
+                checked={repeat}
+                onChange={(e) => {
+                  setRepeat(e.target.checked);
+                  if (!e.target.checked) setLooping(null);
+                }}
+              />
+              Repetir a nota até carregar outra vez
+            </label>
+          </>
         ) : (
           <p className="notice notice--info">Este navegador não suporta a geração de som.</p>
         )}

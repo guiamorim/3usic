@@ -1,31 +1,34 @@
 import { midiToFrequency } from '../domain/notes';
 import { getOutputContext, outputNode } from './context';
+import { pluckedString } from './pluckedString';
 
-/** Short plucked-string-like tone. Returns the end time. */
+const buffers = new Map<string, AudioBuffer>();
+
+/** Rendered plucked-string note, cached per context sample rate, pitch and length. */
+function stringBuffer(ctx: BaseAudioContext, frequency: number, seconds: number): AudioBuffer {
+  const key = `${ctx.sampleRate}:${frequency.toFixed(3)}:${seconds}`;
+  let buf = buffers.get(key);
+  if (!buf) {
+    const data = pluckedString(frequency, ctx.sampleRate, seconds, { sustain: Math.max(1.5, seconds) });
+    buf = ctx.createBuffer(1, data.length, ctx.sampleRate);
+    buf.getChannelData(0).set(data);
+    buffers.set(key, buf);
+  }
+  return buf;
+}
+
+/** Plucked guitar-string note (Karplus-Strong). Returns the end time. */
 export function pluck(ctx: AudioContext, midi: number, when: number, duration = 1.2, volume = 0.35, a4 = 440): number {
-  const osc = ctx.createOscillator();
-  const osc2 = ctx.createOscillator();
+  const src = ctx.createBufferSource();
+  src.buffer = stringBuffer(ctx, midiToFrequency(midi, a4), Math.max(1, Math.ceil(duration)));
   const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  const f = midiToFrequency(midi, a4);
-  osc.type = 'triangle';
-  osc.frequency.value = f;
-  osc2.type = 'sine';
-  osc2.frequency.value = f * 2;
-  filter.type = 'lowpass';
-  filter.frequency.value = Math.min(8000, f * 8);
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(volume, when + 0.01);
+  // The synthesised string is louder than the old oscillator tone at the same nominal volume.
+  gain.gain.setValueAtTime(volume * 1.6, when);
+  gain.gain.setValueAtTime(volume * 1.6, when + duration * 0.8);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-  const g2 = ctx.createGain();
-  g2.gain.value = 0.3;
-  osc.connect(filter);
-  osc2.connect(g2).connect(filter);
-  filter.connect(gain).connect(outputNode(ctx));
-  osc.start(when);
-  osc2.start(when);
-  osc.stop(when + duration + 0.05);
-  osc2.stop(when + duration + 0.05);
+  src.connect(gain).connect(outputNode(ctx));
+  src.start(when);
+  src.stop(when + duration + 0.05);
   return when + duration;
 }
 
@@ -40,27 +43,19 @@ export async function playInterval(low: number, high: number): Promise<void> {
 }
 
 /**
- * Sustained reference tone for tuning by ear. A bright sawtooth: phone speakers barely reproduce
- * the low strings' fundamentals (82–110 Hz), so the harmonics carry the pitch.
+ * Reference note for tuning by ear: a synthesised plucked string that rings for a few seconds,
+ * like the open string on another guitar. Phone speakers barely reproduce the low strings'
+ * fundamentals (82–110 Hz), but the string's harmonics carry the pitch.
  */
-export async function playReference(midi: number, a4 = 440, seconds = 3): Promise<void> {
+export async function playReference(midi: number, a4 = 440, seconds = 4): Promise<void> {
   const ctx = await getOutputContext();
   const when = ctx.currentTime + 0.02;
-  const f = midiToFrequency(midi, a4);
-  const osc = ctx.createOscillator();
-  osc.type = 'sawtooth';
-  osc.frequency.value = f;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = Math.min(6000, Math.max(1500, f * 12));
+  const src = ctx.createBufferSource();
+  src.buffer = stringBuffer(ctx, midiToFrequency(midi, a4), seconds);
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(0.9, when + 0.02);
-  gain.gain.setValueAtTime(0.9, when + seconds * 0.6);
-  gain.gain.exponentialRampToValueAtTime(0.0001, when + seconds);
-  osc.connect(filter).connect(gain).connect(outputNode(ctx));
-  osc.start(when);
-  osc.stop(when + seconds + 0.05);
+  gain.gain.value = 1;
+  src.connect(gain).connect(outputNode(ctx));
+  src.start(when);
 }
 
 /** Strums the sounding notes of a chord from low to high. */

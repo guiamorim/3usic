@@ -1,5 +1,5 @@
 import { useStore } from './store';
-import { navigate } from './router';
+import { navigate, useRoute } from './router';
 import { setPlanStep, usePlanStep } from './planFlow';
 import { LOG_ON_CHECK, useTodayPlan } from './useTodayPlan';
 import { nextBlock } from '../domain/plan';
@@ -12,8 +12,12 @@ export function PlanBar() {
   const step = usePlanStep();
   const { plan, done } = useTodayPlan();
   const { togglePlanBlock } = useStore();
+  const segments = useRoute();
   const block = plan.find((b) => b.id === step);
   if (!block) return null;
+  // Left the step to look at something else (a chord, a lesson): offer the way back.
+  const here = `#/${segments.join('/')}`;
+  const away = !(here === block.route.split('?')[0] || here.startsWith(`${block.route.split('?')[0]}/`));
   const index = plan.indexOf(block);
   const after = nextBlock(plan, new Set([...done, block.id]), block.id);
 
@@ -37,6 +41,11 @@ export function PlanBar() {
         </span>
         <strong className="plan-bar__title">{block.title}</strong>
       </div>
+      {away && (
+        <a className="btn btn--secondary btn--small" href={block.route}>
+          ← Voltar ao passo
+        </a>
+      )}
       <button type="button" className="btn btn--primary btn--small" onClick={() => void finish()}>
         {after ? 'Feito · seguinte →' : 'Feito · terminar'}
       </button>

@@ -28,6 +28,11 @@ export function SongsPage() {
   const set = (patch: Partial<SongFilter>) => setF((prev) => ({ ...prev, ...patch }));
   const active = JSON.stringify({ ...f, collection: 'main' }) !== JSON.stringify(EMPTY_FILTER);
   const kids = f.collection === 'infantil';
+  // The section lives in the URL so «← voltar» from a song returns to it (replaceState: no new history entry).
+  const setCollection = (collection: 'main' | 'infantil') => {
+    set({ collection });
+    history.replaceState(history.state, '', collection === 'infantil' ? '#/musicas?colecao=infantil' : '#/musicas');
+  };
 
   return (
     <Page title="Músicas" subtitle="Escolhe uma música para treinar: a app mostra os acordes que te faltam e monta um plano para chegares lá.">
@@ -37,10 +42,10 @@ export function SongsPage() {
         </a>
       </div>
       <div className="segmented" role="group" aria-label="Secção">
-        <button type="button" className="segmented__item" aria-pressed={!kids} onClick={() => set({ collection: 'main' })}>
+        <button type="button" className="segmented__item" aria-pressed={!kids} onClick={() => setCollection('main')}>
           Todas as músicas
         </button>
-        <button type="button" className="segmented__item" aria-pressed={kids} onClick={() => set({ collection: 'infantil' })}>
+        <button type="button" className="segmented__item" aria-pressed={kids} onClick={() => setCollection('infantil')}>
           Infantis e festas
         </button>
       </div>

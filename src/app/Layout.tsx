@@ -91,6 +91,11 @@ export function Layout({
           </button>
         )}
       </header>
+      {awake?.enabled && awake.state === 'failed' && !hideNav && (
+        <p className="banner banner--warn" role="status">
+          O telemóvel não deixou manter o ecrã ligado. Toca em qualquer sítio para tentar de novo; se continuar, desliga o modo de poupança de energia.
+        </p>
+      )}
       {banner}
       <main id="conteudo" tabIndex={-1} className="app-main">
         {children}
