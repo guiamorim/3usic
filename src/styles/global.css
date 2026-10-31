@@ -2157,3 +2157,18 @@ table {
   position: relative;
   min-width: 0;
 }
+/* Longer app name: the brand shrinks and wraps before pushing «Ecrã ligado» off-screen. */
+.brand {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: clamp(1rem, 4.6vw, var(--fs-lg));
+  line-height: 1.15;
+}
+.brand > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.brand > svg,
+.app-header .awake-toggle {
+  flex-shrink: 0;
+}
