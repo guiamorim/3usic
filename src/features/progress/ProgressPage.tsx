@@ -1,23 +1,44 @@
 import { useStore } from '../../app/store';
 import { Page, ProgressBar } from '../../components/Page';
-import { LESSONS, MODULES } from '../../content/curriculum';
+import { LESSONS, MODULES, lessonsOfModule } from '../../content/curriculum';
 import { EXERCISES } from '../../domain/exercises';
 import { localDay } from '../../domain/dates';
 import { moduleProgress, overallProgress } from '../../domain/progression';
 import { mastery, MASTERY_LABEL } from '../../domain/srs';
 import { practiceStats } from '../../domain/stats';
+import { milestones, practiceDays, streak } from '../../domain/achievements';
 
 const WEEKDAY = new Intl.DateTimeFormat('pt-PT', { weekday: 'short' });
+const DATE = new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'short' });
 
 export function ProgressPage() {
   const { data, completedLessons } = useStore();
   const today = localDay();
   const stats = practiceStats(data.practice, today);
   const maxDay = Math.max(1, ...stats.last7.map((d) => d.minutes));
+  const marks = milestones(data, lessonsOfModule);
+  const run = streak(practiceDays(data.practice), today);
   const recent = [...data.attempts].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
 
   return (
     <Page title="Progresso" back={{ href: '#/ferramentas', label: 'Mais' }}>
+      <section className="card" aria-labelledby="marks-title">
+        <h2 id="marks-title">Marcos</h2>
+        <p>
+          {marks.filter((m) => m.day).length} de {marks.length} alcançados · sequência atual: {run.days} {run.days === 1 ? 'dia' : 'dias'}
+        </p>
+        <ul className="milestones">
+          {marks.map((m) => (
+            <li key={m.id} className={`milestone${m.day ? ' milestone--done' : ''}`}>
+              <strong>{m.title}</strong>
+              <span>{m.description}</span>
+              <span className="milestone__date">{m.day ? `Alcançado em ${DATE.format(new Date(`${m.day}T12:00:00`))}` : 'Por alcançar'}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="hint">A sequência conta os dias com pelo menos 1 minuto de prática. Faltar um dia não a interrompe; faltar dois seguidos, sim.</p>
+      </section>
+
       <section className="card">
         <h2>Lições</h2>
         <p>
@@ -65,9 +86,7 @@ export function ProgressPage() {
               return (
                 <tr key={d.day}>
                   <th scope="row">{WEEKDAY.format(date)}</th>
-                  <td>
-                    <div className="bars__bar" style={{ width: `${(d.minutes / maxDay) * 100}%` }} />
-                  </td>
+                  <td>{d.minutes > 0 && <div className="bars__bar" style={{ width: `${(d.minutes / maxDay) * 100}%` }} />}</td>
                   <td className="bars__value">{d.minutes} min</td>
                 </tr>
               );

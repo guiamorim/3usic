@@ -11,6 +11,7 @@ Ver README → Funcionalidades.
 5. Reduzir o bundle (avaliar `zod/mini`, divisão por rotas).
 
 ## Implementado depois do MVP
+- Renovação visual (2026-10-31, após análise UI/UX): Início com o plano no primeiro ecrã e passos numa linha; sequência de dias (tolera 1 dia de falha), resumo do dia e 9 marcos (`domain/achievements.ts`, sem alterar o esquema); Praticar com «Treino de hoje» (`domain/practiceSuggest.ts`) e grupos; Músicas com filtros recolhidos e «Prontas a tocar»; página da música e Tocar junto com a ação primeiro; anel por módulo em Aprender; novo ícone (palheta com diagrama de acorde), laranja de destaque (`--energy`) e boas-vindas.
 - Alterações de 2026-10-31: «Ecrã ligado» volta a pedir o bloqueio ao primeiro toque e após o sistema o libertar, com aviso se o telemóvel recusar; som das notas do afinador por síntese de corda dedilhada (Karplus-Strong) com opção de repetir; «← voltar» regressa ao ecrã de origem na mesma posição (`app/navTrail.ts`) e «Voltar ao passo» na barra do modo guiado; correções de responsividade (botões a 320 px com texto até 150%).
 - Catálogo de músicas, importação de cifras (ChordPro e texto simples) e plano por música (2026-10-25).
 - Secção «Infantis e festas» em Músicas (2026-10-26): 17 cantigas tradicionais do Brasil e de Portugal com letra (domínio público) e harmonização própria; «Parabéns a você» nas versões BR e PT só com acordes (letra com autoria identificada/incerta).

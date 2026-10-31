@@ -242,6 +242,7 @@ test.describe('músicas', () => {
     await page.getByRole('link', { name: 'Músicas' }).first().click();
     await expect(page.getByRole('heading', { name: 'Músicas', level: 1 })).toBeVisible();
 
+    await page.getByText(/^Filtros/).click();
     await page.getByLabel('Estilo').selectOption('mpb-bossa');
     await expect(page.getByRole('link', { name: /Asa Branca/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Wonderwall/ })).toHaveCount(0);
@@ -292,6 +293,7 @@ test.describe('músicas', () => {
     await page.getByLabel('Mais próxima do original').click();
     await expect(page.getByLabel('Mais próxima do original')).toBeChecked();
     await expect(sheet.getByText('Cº', { exact: true })).toHaveCount(1);
+    await page.getByText('Sobre esta música e estes acordes').click();
     await expect(page.getByText(/Acordes conferidos em cifras\.com\.br/)).toBeVisible();
     // The choice is remembered.
     await page.reload();
@@ -323,6 +325,7 @@ test.describe('músicas', () => {
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Canção de Teste', level: 1 })).toBeVisible();
     await page.goto('/#/musicas');
+    await page.getByText(/^Filtros/).click();
     await page.getByLabel('Origem').selectOption('user');
     await expect(page.getByRole('link', { name: /Canção de Teste/ })).toBeVisible();
 
@@ -330,6 +333,7 @@ test.describe('músicas', () => {
     await page.getByRole('button', { name: 'Apagar música' }).click();
     await page.getByRole('button', { name: /Confirmar: apagar/ }).click();
     await expect(page.getByRole('heading', { name: 'Músicas', level: 1 })).toBeVisible();
+    await page.getByText(/^Filtros/).click();
     await page.getByLabel('Origem').selectOption('user');
     await expect(page.getByText('Nenhuma música corresponde aos filtros.')).toBeVisible();
     expect(external).toEqual([]);
@@ -385,6 +389,7 @@ test.describe('prática guiada', () => {
     await page.goto('/#/musicas/tempo-perdido');
     await page.getByRole('link', { name: /^Tocar junto/ }).click();
     await expect(page.getByRole('heading', { name: 'Tocar junto: Tempo Perdido' })).toBeVisible();
+    await page.getByText('Opções', { exact: true }).click();
     await page.getByLabel('Avaliar com o microfone').click();
     await expect(page.getByLabel('Avaliar com o microfone')).not.toBeChecked();
     await page.getByLabel('Repetir a progressão').selectOption('1');
@@ -646,4 +651,18 @@ test('no iPhone, recomenda instalar no ecrã principal e o aviso pode ser escond
   await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Instala a app no ecrã principal' })).toHaveCount(0);
   await ctx.close();
+});
+
+test('recompensas: sequência no Início e marcos no Progresso', async ({ page }) => {
+  await onboard(page);
+  await expect(page.getByText('Pratica hoje para começar uma sequência.')).toBeVisible();
+  // Ticking the warm-up logs its minutes: today counts as a practice day.
+  const warmUp = page.getByRole('checkbox', { name: /Marcar «Aquecimento» como feito/ });
+  await warmUp.click();
+  await expect(warmUp).toBeChecked();
+  await expect(page.getByText(/^1 dia de sequência/)).toBeVisible();
+  await page.goto('/#/progresso');
+  const marks = page.getByRole('region', { name: 'Marcos' });
+  await expect(marks).toContainText('1 de 9 alcançados');
+  await expect(marks.locator('.milestone--done')).toContainText('Primeira sessão');
 });

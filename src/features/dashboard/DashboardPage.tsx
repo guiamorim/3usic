@@ -16,6 +16,8 @@ import { LOG_ON_CHECK, useTodayPlan } from '../../app/useTodayPlan';
 import { backupDue } from '../../domain/backup';
 import { addDays } from '../../domain/dates';
 import { InstallHint } from '../../app/InstallHint';
+import { milestones, practiceDays, streak } from '../../domain/achievements';
+import { lessonsOfModule } from '../../content/curriculum';
 
 // SVG line icons (same set as the navigation): emoji look different on every phone.
 const BLOCK_ICON: Record<BlockKind, ComponentType> = {
@@ -83,6 +85,11 @@ export function DashboardPage() {
   const next = nextBlock(plan, done);
   const allDone = plan.length > 0 && !next;
   const started = completion.done > 0;
+  const run = streak(practiceDays(data.practice), today);
+  const marks = milestones(data, lessonsOfModule);
+  const reached = marks.filter((m) => m.day !== null);
+  const newToday = marks.filter((m) => m.day === today);
+  const firstVisit = data.practice.length === 0 && !started;
   const showBackup = backupDue({
     today,
     lastExportDay: settings.lastExportDay,
@@ -105,6 +112,16 @@ export function DashboardPage() {
           </p>
         </div>
         <Ring done={completion.done} total={completion.total} />
+        <p className="hero__streak">
+          <span className="hero__flame" aria-hidden="true">
+            <IconFlame />
+          </span>
+          {run.days === 0
+            ? 'Pratica hoje para começar uma sequência.'
+            : run.atRisk
+              ? `${run.days} ${run.days === 1 ? 'dia' : 'dias'} de sequência: ontem falhaste, pratica hoje para a manter.`
+              : `${run.days} ${run.days === 1 ? 'dia' : 'dias'} de sequência${run.today ? '' : ' · pratica hoje para continuar'}`}
+        </p>
         {next && (
           <a className="btn btn--hero" href={next.route} onClick={() => setPlanStep(next.id)}>
             {started ? 'Continuar' : 'Começar'}: {next.title} →
@@ -135,7 +152,86 @@ export function DashboardPage() {
         </section>
       )}
 
-      <details className="card how-to" open={completedLessons.size < 3 && !started}>
+      {allDone && (
+        <section className="card card--celebrate" aria-labelledby="summary-title">
+          <h2 id="summary-title">
+            <HeadingIcon Icon={IconCheck} />
+            Resumo de hoje
+          </h2>
+          <dl className="stats">
+            <div>
+              <dt>Prática</dt>
+              <dd>{stats.todayMinutes} min</dd>
+            </div>
+            <div>
+              <dt>Passos</dt>
+              <dd>
+                {completion.done}/{completion.total}
+              </dd>
+            </div>
+            <div>
+              <dt>Sequência</dt>
+              <dd>
+                {run.days} {run.days === 1 ? 'dia' : 'dias'}
+              </dd>
+            </div>
+          </dl>
+          {newToday.length > 0 && (
+            <ul className="milestones milestones--inline">
+              {newToday.map((m) => (
+                <li key={m.id} className="milestone milestone--done">
+                  <strong>Novo marco: {m.title}</strong>
+                  <span>{m.description}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <section className="card" aria-labelledby="plan-title">
+        <div className="card__head">
+          <h2 id="plan-title">Plano de hoje</h2>
+          <span className="badge">
+            {completion.done}/{completion.total}
+          </span>
+        </div>
+        <ol className="plan">
+          {plan.map((b, i) => {
+            const checked = done.has(b.id);
+            const BlockIcon = checked ? IconCheck : BLOCK_ICON[b.id];
+            return (
+              <li key={b.id} className={`plan__item${checked ? ' plan__item--done' : ''}${next?.id === b.id ? ' plan__item--next' : ''}`}>
+                <a className="plan__link" href={b.route} onClick={() => setPlanStep(b.id)}>
+                  <span className="plan__icon" aria-hidden="true">
+                    <BlockIcon />
+                  </span>
+                  <span className="plan__body">
+                    <span className="plan__title">
+                      <strong>
+                        {i + 1}. {b.title}
+                      </strong>{' '}
+                      <span className="muted">· {b.minutes} min</span>
+                    </span>
+                    <span className="plan__desc">{b.description}</span>
+                  </span>
+                </a>
+                <label className="plan__check">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => void togglePlanBlock(b.id, e.target.checked, LOG_ON_CHECK.has(b.id) ? { minutes: b.minutes, label: b.title } : undefined)}
+                  />
+                  <span className="visually-hidden">Marcar «{b.title}» como feito</span>
+                </label>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="hint">O plano é refeito todos os dias. Se faltares, não acumulas trabalho em atraso.</p>
+      </section>
+
+      <details className="card how-to" open={firstVisit}>
         <summary>
           <strong>Como funciona?</strong> <span className="muted">(3 passos)</span>
         </summary>
@@ -159,57 +255,6 @@ export function DashboardPage() {
         </ol>
         <p className="hint">Os separadores em baixo (Aprender, Praticar, Músicas e Mais, onde estão o afinador, os acordes e as batidas) servem para explorar livremente quando quiseres.</p>
       </details>
-
-      <section className="card" aria-labelledby="plan-title">
-        <div className="card__head">
-          <h2 id="plan-title">Plano de hoje</h2>
-          <span className="badge">
-            {completion.done}/{completion.total}
-          </span>
-        </div>
-        <ol className="plan">
-          {plan.map((b, i) => {
-            const checked = done.has(b.id);
-            const BlockIcon = checked ? IconCheck : BLOCK_ICON[b.id];
-            return (
-              <li key={b.id} className={`plan__item${checked ? ' plan__item--done' : ''}${next?.id === b.id ? ' plan__item--next' : ''}`}>
-                <span className="plan__icon" aria-hidden="true">
-                  <BlockIcon />
-                </span>
-                <div className="plan__body">
-                  <div className="plan__title">
-                    <strong>
-                      {i + 1}. {b.title}
-                    </strong>{' '}
-                    <span className="muted">· {b.minutes} min</span>
-                  </div>
-                  <p>{b.description}</p>
-                  <div className="plan__actions">
-                    <a
-                      className={next?.id === b.id ? 'btn btn--primary btn--small' : 'btn btn--secondary btn--small'}
-                      href={b.route}
-                      aria-label={`Abrir: ${b.title}`}
-                      onClick={() => setPlanStep(b.id)}
-                    >
-                      Abrir
-                    </a>
-                    <label className="plan__check">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => void togglePlanBlock(b.id, e.target.checked, LOG_ON_CHECK.has(b.id) ? { minutes: b.minutes, label: b.title } : undefined)}
-                      />
-                      <span>Feito</span>
-                      <span className="visually-hidden">Marcar «{b.title}» como feito</span>
-                    </label>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-        <p className="hint">O plano é refeito todos os dias. Se faltares, não acumulas trabalho em atraso.</p>
-      </section>
 
       <nav className="tiles" aria-label="Atalhos">
         {SHORTCUTS.map((s) => (
@@ -312,6 +357,9 @@ export function DashboardPage() {
           {completedLessons.size} de {LESSONS.length} lições concluídas
         </p>
         <ProgressBar value={overallProgress(completedLessons)} label="Lições concluídas" />
+        <p className="muted">
+          {reached.length} de {marks.length} marcos alcançados · <a href="#/progresso">ver marcos</a>
+        </p>
         <dl className="stats">
           <div>
             <dt>Hoje</dt>

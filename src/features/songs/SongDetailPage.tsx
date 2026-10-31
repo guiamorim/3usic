@@ -151,18 +151,29 @@ export function SongDetailPage({ songId }: { songId: string }) {
 
   const meta = base.meta;
   return (
-    <Page title={song.title} back={song.kids ? { href: '#/musicas?colecao=infantil', label: 'Infantis e festas' } : { href: '#/musicas', label: 'Músicas' }} subtitle={`${song.artist}${song.year !== null ? ` · ${song.yearApprox ? 'c. ' : ''}${song.year}` : ''}`}>
-      <ul className="tag-list" aria-label="Detalhes">
-        <li>{GENRE_LABEL[song.genre]}</li>
-        {song.origin && <li>{ORIGIN_LABEL[song.origin]}</li>}
-        <li>Dificuldade: {DIFFICULTY_LABEL[current.difficulty]}</li>
-        {meta.key && <li>Tom: {transposeSymbol(meta.key, semitones, preferFlats)}</li>}
-        <li>{totalCapo > 0 ? `Capo na ${totalCapo}.ª casa` : 'Sem capo'}</li>
-        {meta.tempo && <li>{meta.tempo} BPM</li>}
-        {meta.time && <li>Compasso {meta.time}</li>}
-        {song.tuning && <li>Afinação: {song.tuning}</li>}
-        {song.source === 'user' && <li>Importada (só neste dispositivo)</li>}
-      </ul>
+    <Page
+      title={song.title}
+      back={song.kids ? { href: '#/musicas?colecao=infantil', label: 'Infantis e festas' } : { href: '#/musicas', label: 'Músicas' }}
+      subtitle={`${song.artist}${song.year !== null ? ` · ${song.yearApprox ? 'c. ' : ''}${song.year}` : ''}`}
+    >
+      <p className="song-meta">
+        {[
+          `Dificuldade: ${DIFFICULTY_LABEL[current.difficulty]}`,
+          meta.key ? `Tom: ${transposeSymbol(meta.key, semitones, preferFlats)}` : null,
+          totalCapo > 0 ? `Capo na ${totalCapo}.ª casa` : 'Sem capo',
+          meta.tempo ? `${meta.tempo} BPM` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+      <div className="button-row">
+        <a className="btn btn--primary" href={`${href('musicas', linked?.id ?? song.id)}/tocar`}>
+          Tocar junto{linked ? ' (com a letra)' : ''}
+        </a>
+        <button type="button" className="btn btn--secondary" onClick={() => void toggleTarget()} aria-pressed={isTarget}>
+          {isTarget ? 'É a tua música objetivo ✓' : 'Quero aprender esta'}
+        </button>
+      </div>
       {song.hasSimple && (
         <fieldset className="version-switch">
           <legend>Versão dos acordes</legend>
@@ -174,32 +185,37 @@ export function SongDetailPage({ songId }: { songId: string }) {
               </label>
             ))}
           </div>
-          <p className="hint">
-            {version === 'simple'
-              ? 'Sem baixos trocados, extensões nem acordes de passagem: a mesma harmonia com menos acordes diferentes.'
-              : `Acordes como na gravação (${song.full.chords.length} diferentes, contra ${song.simple.chords.length} na simplificada).`}
-          </p>
         </fieldset>
       )}
-      {song.source === 'catalog' && !song.fullSheet && (
-        <p className="hint">
-          Só acordes, sem letra (direitos de autor).{' '}
-          {song.kids
-            ? 'Harmonia simples escrita para este projeto (tónica, dominante e subdominante).'
-            : song.chordSource ? `Acordes conferidos em ${song.chordSource}; as cifras desses sites são feitas por utilizadores e podem ter erros.` : 'Acordes escritos de memória, ainda não conferidos numa fonte.'}{' '}
-          {!song.kids && 'Confirma com a gravação; o andamento é aproximado.'}
-        </p>
-      )}
       {song.note && <p className="notice notice--tip">{song.note}</p>}
-
-      <div className="button-row">
-        <button type="button" className={isTarget ? 'btn btn--secondary' : 'btn btn--primary'} onClick={() => void toggleTarget()} aria-pressed={isTarget}>
-          {isTarget ? 'É a tua música objetivo ✓' : 'Quero aprender esta'}
-        </button>
-        <a className="btn btn--primary" href={`${href('musicas', linked?.id ?? song.id)}/tocar`}>
-          Tocar junto{linked ? ' (com a letra)' : ''}
-        </a>
-      </div>
+      <details className="song-about">
+        <summary>Sobre esta música e estes acordes</summary>
+        <ul className="tag-list" aria-label="Detalhes">
+          <li>{GENRE_LABEL[song.genre]}</li>
+          {song.origin && <li>{ORIGIN_LABEL[song.origin]}</li>}
+          {meta.time && <li>Compasso {meta.time}</li>}
+          {song.tuning && <li>Afinação: {song.tuning}</li>}
+          {song.source === 'user' && <li>Importada (só neste dispositivo)</li>}
+        </ul>
+        {song.hasSimple && (
+          <p className="hint">
+            {version === 'simple'
+              ? 'Versão simplificada: sem baixos trocados, extensões nem acordes de passagem; a mesma harmonia com menos acordes diferentes.'
+              : `Acordes como na gravação (${song.full.chords.length} diferentes, contra ${song.simple.chords.length} na simplificada).`}
+          </p>
+        )}
+        {song.source === 'catalog' && !song.fullSheet && (
+          <p className="hint">
+            Só acordes, sem letra (direitos de autor).{' '}
+            {song.kids
+              ? 'Harmonia simples escrita para este projeto (tónica, dominante e subdominante).'
+              : song.chordSource
+                ? `Acordes conferidos em ${song.chordSource}; as cifras desses sites são feitas por utilizadores e podem ter erros.`
+                : 'Acordes escritos de memória, ainda não conferidos numa fonte.'}{' '}
+            {!song.kids && 'Confirma com a gravação; o andamento é aproximado.'}
+          </p>
+        )}
+      </details>
       {message && (
         <p className="notice notice--success" role="status">
           {message}
@@ -312,10 +328,16 @@ export function SongDetailPage({ songId }: { songId: string }) {
           ) : (
             <>
               <p>
-                A letra desta música tem direitos de autor, por isso a app não a pode incluir. Os sites de cifras pagam licenças para a mostrar. Podes abri-la lá e colar aqui a cifra com letra: fica só no teu dispositivo, para uso pessoal.
+                A letra desta música tem direitos de autor, por isso a app não a pode incluir. Os sites de cifras pagam licenças para a mostrar. Podes abri-la lá e colar aqui a cifra com letra: fica
+                só no teu dispositivo, para uso pessoal.
               </p>
               <div className="button-row">
-                <a className="btn btn--secondary" href={`https://duckduckgo.com/?q=${encodeURIComponent(`${song.title} ${song.artist} site:cifraclub.com.br`)}`} target="_blank" rel="noopener noreferrer">
+                <a
+                  className="btn btn--secondary"
+                  href={`https://duckduckgo.com/?q=${encodeURIComponent(`${song.title} ${song.artist} site:cifraclub.com.br`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Procurar no Cifra Club ↗
                 </a>
                 <a className="btn btn--secondary" href={`https://duckduckgo.com/?q=${encodeURIComponent(`${song.title} ${song.artist} cifra letra`)}`} target="_blank" rel="noopener noreferrer">

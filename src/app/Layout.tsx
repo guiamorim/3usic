@@ -67,9 +67,24 @@ export function Layout({
       </a>
       <header className="app-header">
         <a href="#/" className="brand" aria-label="Chords Dominator — início">
-          <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-            <rect width="32" height="32" rx="8" className="brand__bg" />
-            <path d="M9 8v16M14 8v16M19 8v16M24 8v16M7 12h19M7 17h19" className="brand__lines" />
+          <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true">
+            <defs>
+              <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#6b2a10" />
+                <stop offset="1" stopColor="#e2611c" />
+              </linearGradient>
+            </defs>
+            <rect width="64" height="64" rx="16" fill="url(#brand-grad)" />
+            <path d="M32 10C45 10 52 15 52 22C52 34 40 47 32 54C24 47 12 34 12 22C12 15 19 10 32 10Z" fill="#fff3e8" />
+            <g stroke="#6b2a10" strokeLinecap="round">
+              <path d="M23 17v22M29 17v26M35 17v26M41 17v22" strokeWidth="2" />
+              <path d="M20 17h24" strokeWidth="3.5" />
+              <path d="M21 25h22M22 33h20" strokeWidth="1.5" />
+            </g>
+            <g fill="#e2611c">
+              <circle cx="29" cy="29" r="3.6" />
+              <circle cx="41" cy="21" r="3.6" />
+            </g>
           </svg>
           <span>Chords Dominator</span>
         </a>

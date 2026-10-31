@@ -28,6 +28,7 @@ export function SongsPage() {
   const set = (patch: Partial<SongFilter>) => setF((prev) => ({ ...prev, ...patch }));
   const active = JSON.stringify({ ...f, collection: 'main' }) !== JSON.stringify(EMPTY_FILTER);
   const kids = f.collection === 'infantil';
+  const filterCount = [f.genre, f.origin, f.decade, f.artist, f.difficulty, f.source !== EMPTY_FILTER.source].filter(Boolean).length;
   // The section lives in the URL so «← voltar» from a song returns to it (replaceState: no new history entry).
   const setCollection = (collection: 'main' | 'infantil') => {
     set({ collection });
@@ -36,11 +37,6 @@ export function SongsPage() {
 
   return (
     <Page title="Músicas" subtitle="Escolhe uma música para treinar: a app mostra os acordes que te faltam e monta um plano para chegares lá.">
-      <div className="button-row">
-        <a className="btn btn--primary" href="#/musicas/importar">
-          Importar cifra
-        </a>
-      </div>
       <div className="segmented" role="group" aria-label="Secção">
         <button type="button" className="segmented__item" aria-pressed={!kids} onClick={() => setCollection('main')}>
           Todas as músicas
@@ -51,110 +47,124 @@ export function SongsPage() {
       </div>
       {kids && (
         <p className="notice notice--info">
-          Cantigas de roda e canções infantis tradicionais do Brasil e de Portugal, com letra completa (domínio público) e acordes fáceis, quase sempre só dois ou três. O «Parabéns a você» está nas versões brasileira e portuguesa, só com acordes.
+          Cantigas de roda e canções infantis tradicionais do Brasil e de Portugal, com letra completa (domínio público) e acordes fáceis, quase sempre só dois ou três. O «Parabéns a você» está nas
+          versões brasileira e portuguesa, só com acordes.
         </p>
       )}
-      <p className="notice notice--info" hidden={kids}>
-        As músicas famosas mostram só os acordes (a letra está protegida por direitos de autor), numa versão simplificada ou mais próxima do original. Confirma sempre com a gravação. As que têm letra completa são de domínio público. Podes importar as tuas próprias cifras; ficam só neste dispositivo.
-      </p>
+      <details className="song-about" hidden={kids}>
+        <summary>Só acordes, sem letra · porquê?</summary>
+        <p className="hint">
+          As músicas famosas mostram só os acordes (a letra está protegida por direitos de autor), numa versão simplificada ou mais próxima do original. Confirma sempre com a gravação. As que têm
+          letra completa são de domínio público. Podes <a href="#/musicas/importar">importar as tuas próprias cifras</a>; ficam só neste dispositivo.
+        </p>
+      </details>
 
-      <div className="filters filters--songs" role="search">
+      <div role="search">
         <label className="field">
           <span>Pesquisar</span>
           <input type="search" value={f.query} onChange={(e) => set({ query: e.target.value })} placeholder="Título, artista ou acorde" />
         </label>
-        <label className="field">
-          <span>Estilo</span>
-          <select value={f.genre} onChange={(e) => set({ genre: e.target.value as Genre | '' })}>
-            <option value="">Todos</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>
-                {GENRE_LABEL[g]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>País</span>
-          <select value={f.origin} onChange={(e) => set({ origin: e.target.value as Origin | '' })}>
-            <option value="">Todos</option>
-            {origins.map((o) => (
-              <option key={o} value={o}>
-                {ORIGIN_LABEL[o]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Época</span>
-          <select value={f.decade ?? ''} onChange={(e) => set({ decade: e.target.value ? Number(e.target.value) : null })}>
-            <option value="">Todas</option>
-            {decades.map((d) => (
-              <option key={d} value={d}>
-                {decadeLabel(d)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Artista</span>
-          <select value={f.artist} onChange={(e) => set({ artist: e.target.value })}>
-            <option value="">Todos</option>
-            {artists.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Dificuldade</span>
-          <select value={f.difficulty} onChange={(e) => set({ difficulty: Number(e.target.value) as SongFilter['difficulty'] })}>
-            <option value={0}>Todas</option>
-            <option value={1}>Fácil</option>
-            <option value={2}>Média</option>
-            <option value={3}>Difícil (pestana ou acordes raros)</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Origem</span>
-          <select value={f.source} onChange={(e) => set({ source: e.target.value as SongFilter['source'] })}>
-            {(Object.keys(SOURCE_LABEL) as SongFilter['source'][]).map((s) => (
-              <option key={s} value={s}>
-                {SOURCE_LABEL[s]}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
-      <fieldset className="version-switch">
-        <legend>Versão dos acordes</legend>
-        <div className="choice-group choice-group--inline">
-          {(['simple', 'full'] as const).map((v) => (
-            <label key={v} className="chip">
-              <input type="radio" name="versao-lista" checked={version === v} onChange={() => void saveSettings({ songVersion: v })} />
-              {VERSION_LABEL[v]}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <label className="chip">
+      <label className="chip chip--ready">
         <input type="checkbox" checked={f.playableOnly} onChange={(e) => set({ playableOnly: e.target.checked })} />
-        Só as que já consigo tocar (falta no máximo 1 acorde)
+        Prontas a tocar (falta no máximo 1 acorde)
       </label>
+      <details className="filters-panel">
+        <summary>Filtros{filterCount > 0 ? ` · ${filterCount} ${filterCount === 1 ? 'ativo' : 'ativos'}` : ''}</summary>
+        <div className="filters filters--songs">
+          <label className="field">
+            <span>Estilo</span>
+            <select value={f.genre} onChange={(e) => set({ genre: e.target.value as Genre | '' })}>
+              <option value="">Todos</option>
+              {genres.map((g) => (
+                <option key={g} value={g}>
+                  {GENRE_LABEL[g]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>País</span>
+            <select value={f.origin} onChange={(e) => set({ origin: e.target.value as Origin | '' })}>
+              <option value="">Todos</option>
+              {origins.map((o) => (
+                <option key={o} value={o}>
+                  {ORIGIN_LABEL[o]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Época</span>
+            <select value={f.decade ?? ''} onChange={(e) => set({ decade: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Todas</option>
+              {decades.map((d) => (
+                <option key={d} value={d}>
+                  {decadeLabel(d)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Artista</span>
+            <select value={f.artist} onChange={(e) => set({ artist: e.target.value })}>
+              <option value="">Todos</option>
+              {artists.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Dificuldade</span>
+            <select value={f.difficulty} onChange={(e) => set({ difficulty: Number(e.target.value) as SongFilter['difficulty'] })}>
+              <option value={0}>Todas</option>
+              <option value={1}>Fácil</option>
+              <option value={2}>Média</option>
+              <option value={3}>Difícil (pestana ou acordes raros)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Origem</span>
+            <select value={f.source} onChange={(e) => set({ source: e.target.value as SongFilter['source'] })}>
+              {(Object.keys(SOURCE_LABEL) as SongFilter['source'][]).map((s) => (
+                <option key={s} value={s}>
+                  {SOURCE_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <fieldset className="version-switch">
+          <legend>Versão dos acordes</legend>
+          <div className="choice-group choice-group--inline">
+            {(['simple', 'full'] as const).map((v) => (
+              <label key={v} className="chip">
+                <input type="radio" name="versao-lista" checked={version === v} onChange={() => void saveSettings({ songVersion: v })} />
+                {VERSION_LABEL[v]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </details>
 
       <div className="card__head">
         <p className="muted" role="status">
           {list.length} {list.length === 1 ? 'música' : 'músicas'}
         </p>
-        {active && (
+        {active ? (
           <button type="button" className="btn btn--ghost btn--small" onClick={() => setF({ ...EMPTY_FILTER, collection: f.collection })}>
             Limpar filtros
           </button>
+        ) : (
+          <a className="btn btn--secondary btn--small" href="#/musicas/importar">
+            + Importar cifra
+          </a>
         )}
       </div>
 
-      {list.length === 0 && <p>Nenhuma música corresponde aos filtros.{f.playableOnly && ' Aprende mais acordes ou desliga «Só as que já consigo tocar».'}</p>}
+      {list.length === 0 && <p>Nenhuma música corresponde aos filtros.{f.playableOnly && ' Aprende mais acordes ou desliga «Prontas a tocar».'}</p>}
       <ul className="song-list">
         {list.map((s) => {
           const v = versionOf(s, version);
@@ -178,9 +188,7 @@ export function SongsPage() {
                     (missing === 0 ? (
                       <span className="status-ok">Já sabes todos os acordes</span>
                     ) : (
-                      <span className="status-warn">
-                        {missing === 1 ? 'Falta 1 acorde' : `Faltam ${missing} acordes`}
-                      </span>
+                      <span className="status-warn">{missing === 1 ? 'Falta 1 acorde' : `Faltam ${missing} acordes`}</span>
                     ))}
                 </span>
                 <ul className="chord-chips" aria-label="Acordes">

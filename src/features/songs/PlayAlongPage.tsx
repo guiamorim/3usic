@@ -334,7 +334,7 @@ export function PlayAlongPage({ songId }: { songId: string }) {
     <Page title={`Tocar junto: ${song.title}`} back={back} subtitle={`${song.artist} · versão ${VERSION_LABEL[version].toLowerCase()} · ${barBeats} tempos por compasso`}>
       {phase === 'setup' && (
         <section className="card">
-          <p>A app mostra o acorde que deves tocar, marca o tempo e, se ligares o microfone, verifica se o acorde soou certo. O som é analisado só neste dispositivo: nada é gravado nem enviado.</p>
+          <p>Mostra o acorde a tocar, marca o tempo e verifica com o microfone se soou certo. Nada é gravado nem enviado.</p>
           <fieldset className="version-switch">
             <legend>Modo</legend>
             <div className="choice-group">
@@ -367,74 +367,8 @@ export function PlayAlongPage({ songId }: { songId: string }) {
                 </button>
               </div>
               <p className="hint center">{meta?.tempo ? `Andamento original: cerca de ${meta.tempo} BPM. Começa devagar.` : 'Andamento original desconhecido: ajusta ao teu ritmo.'}</p>
-              {barsFromLines && (
-                <label className="field">
-                  <span>Repetir a progressão</span>
-                  <select value={repeats} onChange={(e) => setRepeats(Number(e.target.value))}>
-                    {[1, 2, 4, 8].map((n) => (
-                      <option key={n} value={n}>
-                        {n === 1 ? '1 vez' : `${n} vezes`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {!barsFromLines && (
-                <label className="field">
-                  <span>Tempos por acorde</span>
-                  <select value={beatsPerChord} onChange={(e) => setBeatsPerChord(Number(e.target.value))}>
-                    {[2, 4, 8].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label className="chip">
-                <input type="checkbox" checked={click} onChange={(e) => setClick(e.target.checked)} />
-                Clique do metrónomo
-              </label>
-              <label className="chip">
-                <input type="checkbox" checked={useMic} onChange={(e) => setUseMic(e.target.checked)} />
-                Avaliar com o microfone
-              </label>
-              <label className="chip">
-                <input type="checkbox" checked={backing && !useMic} disabled={useMic} onChange={(e) => setBacking(e.target.checked)} />
-                Acompanhamento (a app toca o acorde)
-                {useMic ? ': desliga o microfone para usar' : ''}
-              </label>
             </>
           )}
-          {(useMic || needsMic) && (
-            <>
-              <label className="field">
-                <span>Sensibilidade do microfone</span>
-                <select
-                  value={sensitivity}
-                  onChange={(e) =>
-                    void saveSettings({
-                      micSensitivity: e.target.value as MicSensitivity,
-                    })
-                  }
-                >
-                  {(Object.keys(SENSITIVITY_LABEL) as MicSensitivity[]).map((k) => (
-                    <option key={k} value={k}>
-                      {SENSITIVITY_LABEL[k]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="chip">
-                <input type="checkbox" checked={diagnostics} onChange={(e) => setDiagnostics(e.target.checked)} />
-                Mostrar diagnóstico (o que o microfone ouve)
-              </label>
-            </>
-          )}
-          <p className="hint">
-            {timeline.length} acordes · {mode === 'tempo' ? `cerca de ${Math.round((total * 60) / bpm / 6) / 10} min` : 'ao teu ritmo'}. A gravação original não é reproduzida (direitos de autor); se
-            quiseres, põe a música a tocar noutro aparelho.
-          </p>
           {micError && (
             <p className="notice notice--error" role="alert">
               {micError}
@@ -443,6 +377,79 @@ export function PlayAlongPage({ songId }: { songId: string }) {
           <button type="button" className="btn btn--primary btn--large" onClick={() => void start()} disabled={timeline.length === 0}>
             Começar
           </button>
+          <details className="song-about">
+            <summary>Opções</summary>
+            {mode === 'tempo' && (
+              <>
+                {barsFromLines && (
+                  <label className="field">
+                    <span>Repetir a progressão</span>
+                    <select value={repeats} onChange={(e) => setRepeats(Number(e.target.value))}>
+                      {[1, 2, 4, 8].map((n) => (
+                        <option key={n} value={n}>
+                          {n === 1 ? '1 vez' : `${n} vezes`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {!barsFromLines && (
+                  <label className="field">
+                    <span>Tempos por acorde</span>
+                    <select value={beatsPerChord} onChange={(e) => setBeatsPerChord(Number(e.target.value))}>
+                      {[2, 4, 8].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label className="chip">
+                  <input type="checkbox" checked={click} onChange={(e) => setClick(e.target.checked)} />
+                  Clique do metrónomo
+                </label>
+                <label className="chip">
+                  <input type="checkbox" checked={useMic} onChange={(e) => setUseMic(e.target.checked)} />
+                  Avaliar com o microfone
+                </label>
+                <label className="chip">
+                  <input type="checkbox" checked={backing && !useMic} disabled={useMic} onChange={(e) => setBacking(e.target.checked)} />
+                  Acompanhamento (a app toca o acorde)
+                  {useMic ? ': desliga o microfone para usar' : ''}
+                </label>
+              </>
+            )}
+            {(useMic || needsMic) && (
+              <>
+                <label className="field">
+                  <span>Sensibilidade do microfone</span>
+                  <select
+                    value={sensitivity}
+                    onChange={(e) =>
+                      void saveSettings({
+                        micSensitivity: e.target.value as MicSensitivity,
+                      })
+                    }
+                  >
+                    {(Object.keys(SENSITIVITY_LABEL) as MicSensitivity[]).map((k) => (
+                      <option key={k} value={k}>
+                        {SENSITIVITY_LABEL[k]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="chip">
+                  <input type="checkbox" checked={diagnostics} onChange={(e) => setDiagnostics(e.target.checked)} />
+                  Mostrar diagnóstico (o que o microfone ouve)
+                </label>
+              </>
+            )}
+            <p className="hint">
+              {timeline.length} acordes · {mode === 'tempo' ? `cerca de ${Math.round((total * 60) / bpm / 6) / 10} min` : 'ao teu ritmo'}. A gravação original não é reproduzida (direitos de autor); se
+              quiseres, põe a música a tocar noutro aparelho.
+            </p>
+          </details>
           {timeline.length === 0 && <p className="notice notice--info">Esta música não tem acordes para tocar.</p>}
         </section>
       )}
